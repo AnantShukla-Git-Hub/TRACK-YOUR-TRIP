@@ -2,7 +2,7 @@
 
 Split trip expenses fairly among friends.
 
-**Live Demo:** https://anantshukla-git-hub.github.io/TRACK-YOUR-TRIP/
+**Live:** https://anantshukla-git-hub.github.io/TRACK-YOUR-TRIP/
 
 ## How Settlement Works
 
