@@ -31,7 +31,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173", 
         "http://localhost:3000",
-        "https://track-your-trip.onrender.com",  # Production frontend
+        "https://anantshukla-git-hub.github.io",  # GitHub Pages
     ],
     allow_credentials=True,
     allow_methods=["*"],
