@@ -1,19 +1,11 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "services": {
-    "app": {
-      "root": ".",
-      "framework": "fastapi"
-    },
-    "frontend-trip": {
-      "root": "frontend-trip",
-      "framework": "vite"
-    }
-  },
+  "buildCommand": "cd frontend-trip && npm run build",
+  "outputDirectory": "frontend-trip/dist",
+  "installCommand": "cd frontend-trip && npm install",
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "service": "app"
+      "source": "/api/(.*)",
+      "destination": "/api/index.py"
     }
   ]
 }
