@@ -1,158 +1,174 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trip Expense Splitter</title>
-    <style>
-        /* Simple CSS styles for the expense splitter app */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            padding: 30px;
-        }
-        
-        h1 {
-            color: #333;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        
-        .section {
-            margin-bottom: 30px;
-            padding: 20px;
-            border: 2px solid #f0f0f0;
-            border-radius: 10px;
-        }
-        
-        input, button, select {
-            padding: 10px;
-            margin: 5px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 14px;
-        }
-        
-        button {
-            background: #4CAF50;
-            color: white;
-            cursor: pointer;
-            border: none;
-        }
-        
-        button:hover {
-            background: #45a049;
-        }
-        
-        .pdf-btn {
-            background: #ff6b35;
-        }
-        
-        .pdf-btn:hover {
-            background: #e55a2b;
-        }
-        
-        .member-chip {
-            display: inline-block;
-            background: #e3f2fd;
-            padding: 8px 12px;
-            margin: 3px;
-            border-radius: 20px;
-            font-size: 12px;
-        }
-        
-        .expense-item {
-            background: #f9f9f9;
-            padding: 15px;
-            margin: 10px 0;
-            border-radius: 8px;
-            border-left: 4px solid #4CAF50;
-        }
-        
-        .settlement-item {
-            background: #fff3cd;
-            padding: 15px;
-            margin: 10px 0;
-            border-radius: 8px;
-            border-left: 4px solid #ff6b35;
-        }
-        
-        .total-amount {
-            font-size: 24px;
-            font-weight: bold;
-            color: #ff6b35;
-            text-align: center;
-            margin: 20px 0;
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trip Expense Splitter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#EEF0EC;--card:#fff;--ink:#1F2A24;--muted:#5C6A62;--green:#1E5B45;--green-d:#174A38;--yellow:#E8B931;--rule:#CBD0C8;--tint:#E4EFE9;--sand:#FBF1CF;--brick:#B8503A;color-scheme:light}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Archivo',Arial,sans-serif;background:var(--paper);color:var(--ink);line-height:1.5;font-size:15px;padding:48px 20px 96px}
+.wrap{max-width:920px;margin:0 auto}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:36px;padding-bottom:22px;border-bottom:2px dashed var(--rule)}
+h1{font-size:clamp(42px,9vw,76px);line-height:.95;font-weight:800;font-variation-settings:'wdth' 70;letter-spacing:-.01em;color:var(--green);overflow-wrap:anywhere}
+h2{font-size:26px;line-height:1.1;font-weight:800;font-variation-settings:'wdth' 75;margin-bottom:6px}
+h3{font-size:15px;font-weight:700;margin:20px 0 6px}
+.lead{color:var(--muted);margin-bottom:20px;max-width:56ch}
+.ticket{display:grid;grid-template-columns:1fr 240px;background:var(--card);border:1px solid var(--rule);border-radius:8px;margin-bottom:28px}
+.main{padding:30px 32px;min-width:0}
+.stub{position:relative;padding:30px 24px;border-left:2px dashed var(--rule);background:#FAFBF9;border-radius:0 8px 8px 0}
+.stub::before,.stub::after{content:'';position:absolute;left:-10px;width:18px;height:18px;border-radius:50%;background:var(--paper);border:1px solid var(--rule)}
+.stub::before{top:-10px;clip-path:inset(50% 0 0 0)}
+.stub::after{bottom:-10px;clip-path:inset(0 0 50% 0)}
+.cap{font-size:13px;color:var(--muted)}
+.big{font-size:40px;line-height:1.05;font-weight:800;font-variation-settings:'wdth' 72;color:var(--green);margin:2px 0 16px;overflow-wrap:anywhere}
+label.f{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+input,select{width:100%;padding:11px 12px;border:1px solid var(--rule);border-radius:4px;background:#fff;font:inherit;color:var(--ink)}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+input[type=checkbox]{width:18px;height:18px;accent-color:var(--green);padding:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px}
+.row{display:flex;gap:10px;align-items:flex-end}
+.row>div{flex:1}
+button{font:inherit;cursor:pointer}
+.primary{background:var(--green);color:#fff;border:0;border-radius:4px;padding:12px 20px;font-weight:600;white-space:nowrap}
+.primary:hover{background:var(--green-d)}
+.pdf-btn{background:var(--yellow);color:var(--ink)}
+.pdf-btn:hover{background:#d6a826}
+.link{background:none;border:0;color:var(--muted);text-decoration:underline;padding:6px 0}
+.link:hover{color:var(--brick)}
+.tag{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--rule);padding:5px 12px 5px 5px;border-radius:4px;margin:14px 8px 0 0;background:#fff}
+.sw{display:inline-block;width:22px;height:22px;border-radius:3px;color:#fff;font-weight:700;font-size:12px;text-align:center;line-height:22px;flex:none}
+.pickrow{display:flex;align-items:center;gap:10px;margin:7px 0;flex-wrap:wrap}
+label.pick{display:flex;align-items:center;gap:8px;cursor:pointer;min-width:170px}
+.amt{width:140px;padding:8px 10px}
+.exp{display:grid;grid-template-columns:5px 1fr auto;gap:14px;align-items:center;border:1px solid var(--rule);border-radius:4px;margin-top:10px;background:#fff}
+.exp .bar{align-self:stretch;border-radius:4px 0 0 4px}
+.exp .body{padding:12px 0;min-width:0}
+.exp .body strong{overflow-wrap:anywhere}
+.exp .side{padding:0 16px;text-align:right}
+.exp .price{font-size:22px;font-weight:800;font-variation-settings:'wdth' 75;color:var(--green)}
+table{width:100%;border-collapse:collapse;margin-top:6px}
+th{font-size:13px;font-weight:600;color:var(--muted);text-align:left;padding:8px 6px;border-bottom:2px solid var(--green)}
+td{padding:10px 6px;border-bottom:1px solid var(--rule)}
+th.n,td.n{text-align:right}
+.pass{display:grid;grid-template-columns:1fr 80px 1fr 150px;align-items:center;border:1.5px solid var(--green);border-radius:6px;margin-top:12px;background:#fff}
+.pass>div{padding:14px 18px;min-width:0}
+.pass .nm{font-size:22px;font-weight:800;font-variation-settings:'wdth' 75;overflow-wrap:anywhere}
+.pass .go{padding:0 6px}
+.arrow{height:2px;background:var(--ink);position:relative;margin-right:8px}
+.arrow::after{content:'';position:absolute;right:-8px;top:-5px;border-left:9px solid var(--ink);border-top:6px solid transparent;border-bottom:6px solid transparent}
+.pass .st{background:var(--sand);border-left:2px dashed var(--green);align-self:stretch;display:flex;flex-direction:column;justify-content:center;border-radius:0 5px 5px 0}
+.pass .st b{font-size:24px;font-weight:800;font-variation-settings:'wdth' 75;color:var(--green)}
+.good{color:var(--green);font-weight:600}.bad{color:var(--brick);font-weight:600}
+#msg{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:12px 20px;border-radius:4px;opacity:0;pointer-events:none;transition:.2s;max-width:90vw;z-index:9}
+#msg.on{opacity:1;transform:translateX(-50%)}
+@media(max-width:720px){
+ body{padding:28px 14px 80px}
+ .ticket{grid-template-columns:1fr}
+ .main{padding:22px 18px}
+ .stub{border-left:0;border-top:2px dashed var(--rule);border-radius:0 0 8px 8px;padding:22px 18px}
+ .stub::before,.stub::after{display:none}
+ .grid2{grid-template-columns:1fr}
+ .pass{grid-template-columns:1fr 50px 1fr}
+ .pass .st{grid-column:1/-1;border-left:0;border-top:2px dashed var(--green);border-radius:0 0 5px 5px}
+ .pass .nm{font-size:18px}
+}
+@media(prefers-reduced-motion:reduce){#msg{transition:none}}
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>Trip Expense Splitter</h1>
-        
-        <!-- Trip Creation Section -->
-        <div id="tripSection" class="section">
-            <h2>Create Trip</h2>
-            <input type="text" id="tripName" placeholder="Trip Name (e.g., Goa 2024)" />
-            <button onclick="createTrip()">Start Trip</button>
+<div class="wrap">
+    <header>
+        <h1>Track your trip</h1>
+        <button class="link" id="newTripBtn" onclick="resetTrip()" style="display:none">Start a new trip</button>
+    </header>
+
+    <!-- Trip Creation Section -->
+    <section id="tripSection" class="ticket">
+        <div class="main">
+            <h2>Name the trip</h2>
+            <p class="lead">Add the people who came along, then log each expense as it happens. The app works out who pays whom.</p>
+            <div class="row">
+                <div><label class="f" for="tripName">Trip name</label>
+                <input type="text" id="tripName" placeholder="Goa, December 2026"></div>
+                <button class="primary" onclick="createTrip()">Start trip</button>
+            </div>
         </div>
-        
-        <!-- Members Section -->
-        <div id="membersSection" class="section" style="display:none">
-            <h2>Add Members</h2>
-            <input type="text" id="memberName" placeholder="Member Name" />
-            <button onclick="addMember()">Add Member</button>
+        <div class="stub"><div class="cap">Everything is saved in this browser, so you can close the tab and come back later.</div></div>
+    </section>
+
+    <!-- Members Section -->
+    <section id="membersSection" class="ticket" style="display:none">
+        <div class="main">
+            <h2>Who is travelling</h2>
+            <p class="lead">Add at least two people to start logging expenses.</p>
+            <div class="row">
+                <div><label class="f" for="memberName">Name</label>
+                <input type="text" id="memberName" placeholder="Member name"></div>
+                <button class="primary" onclick="addMember()">Add member</button>
+            </div>
             <div id="membersList"></div>
         </div>
-        
-        <!-- Expenses Section -->
-        <div id="expensesSection" class="section" style="display:none">
-            <h2>Add Expense</h2>
-            <input type="text" id="expenseDescription" placeholder="What was the expense?" />
-            <input type="number" id="expenseAmount" placeholder="Amount in Rupees" />
-            
-            <h3>Who paid?</h3>
+        <div class="stub"><div class="cap">Travellers</div><div class="big" id="membersCount">0</div></div>
+    </section>
+
+    <!-- Expenses Section -->
+    <section id="expensesSection" class="ticket" style="display:none">
+        <div class="main">
+            <h2>Add an expense</h2>
+            <p class="lead">Record who paid and who shares the cost. The cost is split equally among the people you tick.</p>
+            <div class="grid2">
+                <div><label class="f" for="expenseDescription">What was it for</label>
+                <input type="text" id="expenseDescription" placeholder="Hotel booking"></div>
+                <div><label class="f" for="expenseAmount">Amount in rupees</label>
+                <input type="number" id="expenseAmount" placeholder="1200" min="0" step="any"></div>
+                <div><label class="f" for="expenseCategory">Category</label>
+                <select id="expenseCategory"></select></div>
+                <div><label class="f" for="expenseDate">Date</label>
+                <input type="date" id="expenseDate"></div>
+            </div>
+            <h3>Who paid</h3>
             <div id="payersList"></div>
-            
-            <h3>Split among whom?</h3>
+            <h3>Split among</h3>
             <div id="participantsList"></div>
-            
-            <button onclick="addExpense()">Add Expense</button>
+            <div style="margin-top:22px"><button class="primary" onclick="addExpense()">Add expense</button></div>
+            <h3 style="margin-top:34px">Expenses so far</h3>
             <div id="expensesList"></div>
         </div>
-        
-        <!-- Settlement Section -->
-        <div id="settlementSection" class="section" style="display:none">
-            <h2>Settlement</h2>
-            <div class="total-amount" id="totalAmount"></div>
-            <div id="balancesList"></div>
-            <div id="transactionsList"></div>
-            <button class="pdf-btn" onclick="downloadPDF()">Download PDF Report</button>
+        <div class="stub">
+            <div class="cap">This expense</div><div class="big" id="previewTotal">₹0</div>
+            <div class="cap">Each person pays</div><div class="big" id="previewShare">₹0</div>
+            <div class="cap" id="previewCount">0 people</div>
         </div>
-    </div>
+    </section>
 
-    <script>
+    <!-- Settlement Section -->
+    <section id="settlementSection" class="ticket" style="display:none">
+        <div class="main">
+            <h2>Settlement</h2>
+            <p class="lead">Who has paid more than their share, and the fewest payments to even it out.</p>
+            <div id="balancesList"></div>
+            <h3 style="margin-top:28px">Payments to make</h3>
+            <div id="transactionsList"></div>
+        </div>
+        <div class="stub">
+            <div id="totalAmount"></div>
+            <div class="cap">Average per person</div><div class="big" id="perHead">₹0</div>
+            <button class="primary pdf-btn" onclick="downloadPDF()">Download PDF report</button>
+        </div>
+    </section>
+</div>
+<div id="msg" role="status" aria-live="polite"></div>
+
+<script>
         // Global variables to store all trip data
         let tripData = {
             name: '',
             members: [],        // [{id: 1, name: 'Anant'}, ...]
-            expenses: [],       // [{id: 1, description: 'Hotel', amount: 1200, payers: [...], participants: [...]}]
+            expenses: [],       // [{id, description, amount, category, date, payers: [{memberId, amount}], participants: [ids]}]
             nextMemberId: 1,
             nextExpenseId: 1
         };
@@ -164,33 +180,48 @@
         };
 
         // ===============================
+        // UI HELPERS
+        // ===============================
+        const CATS = {'Stay':'#6D4C7D','Food':'#E07A2F','Travel':'#1E5B45','Fuel':'#B8503A','Entry tickets':'#B5446E','Shopping':'#7A8B2E','Other':'#8A948D'};
+        const MCOL = ['#1E5B45','#E07A2F','#B5446E','#6D4C7D','#C9A227','#7A8B2E','#B8503A','#5E9E7E'];
+        const $ = id => document.getElementById(id);
+        const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+        const money = n => '₹' + Number(n).toLocaleString('en-IN', {maximumFractionDigits: 2});
+        const today = () => new Date().toISOString().slice(0, 10);
+        const mname = id => { const m = tripData.members.find(m => m.id === id); return m ? m.name : 'Unknown'; };
+        const mcol = id => MCOL[Math.max(0, tripData.members.findIndex(m => m.id === id)) % MCOL.length];
+        const initial = n => esc((n.trim()[0] || '?').toUpperCase());
+        let msgTimer;
+        function notify(text) {
+            const el = $('msg');
+            el.textContent = text;
+            el.classList.add('on');
+            clearTimeout(msgTimer);
+            msgTimer = setTimeout(() => el.classList.remove('on'), 3500);
+        }
+
+        // ===============================
         // HEAP DATA STRUCTURE FOR GREEDY ALGORITHM
         // ===============================
-        
+
         // MinHeap class - smallest element at top
         class MinHeap {
-            constructor() {
-                this.heap = [];
-            }
+            constructor() { this.heap = []; }
 
-            // Add element to heap
             push(value) {
                 this.heap.push(value);
                 this.bubbleUp(this.heap.length - 1);
             }
 
-            // Remove and return smallest element
             pop() {
                 if (this.heap.length === 0) return null;
                 if (this.heap.length === 1) return this.heap.pop();
-                
                 const min = this.heap[0];
                 this.heap[0] = this.heap.pop();
                 this.bubbleDown(0);
                 return min;
             }
 
-            // Move element up to maintain heap property
             bubbleUp(index) {
                 while (index > 0) {
                     const parent = Math.floor((index - 1) / 2);
@@ -200,32 +231,23 @@
                 }
             }
 
-            // Move element down to maintain heap property
             bubbleDown(index) {
                 while (true) {
                     let smallest = index;
                     const left = 2 * index + 1;
                     const right = 2 * index + 2;
-
-                    if (left < this.heap.length && this.heap[left][0] < this.heap[smallest][0]) {
-                        smallest = left;
-                    }
-                    if (right < this.heap.length && this.heap[right][0] < this.heap[smallest][0]) {
-                        smallest = right;
-                    }
+                    if (left < this.heap.length && this.heap[left][0] < this.heap[smallest][0]) smallest = left;
+                    if (right < this.heap.length && this.heap[right][0] < this.heap[smallest][0]) smallest = right;
                     if (smallest === index) break;
-
                     [this.heap[index], this.heap[smallest]] = [this.heap[smallest], this.heap[index]];
                     index = smallest;
                 }
             }
 
-            size() {
-                return this.heap.length;
-            }
+            size() { return this.heap.length; }
         }
 
-        // MaxHeap class - largest element at top (extends MinHeap but reverses comparison)
+        // MaxHeap class - largest element at top (reverses the comparison)
         class MaxHeap extends MinHeap {
             bubbleUp(index) {
                 while (index > 0) {
@@ -241,15 +263,9 @@
                     let largest = index;
                     const left = 2 * index + 1;
                     const right = 2 * index + 2;
-
-                    if (left < this.heap.length && this.heap[left][0] > this.heap[largest][0]) {
-                        largest = left;
-                    }
-                    if (right < this.heap.length && this.heap[right][0] > this.heap[largest][0]) {
-                        largest = right;
-                    }
+                    if (left < this.heap.length && this.heap[left][0] > this.heap[largest][0]) largest = left;
+                    if (right < this.heap.length && this.heap[right][0] > this.heap[largest][0]) largest = right;
                     if (largest === index) break;
-
                     [this.heap[index], this.heap[largest]] = [this.heap[largest], this.heap[index]];
                     index = largest;
                 }
@@ -262,128 +278,117 @@
 
         // Create a new trip - initialize everything
         function createTrip() {
-            const name = document.getElementById('tripName').value.trim();
-            if (!name) {
-                alert('Please enter trip name');
-                return;
-            }
-            
+            const name = $('tripName').value.trim();
+            if (!name) { notify('Please enter a trip name'); return; }
+
             tripData.name = name;
-            
-            // Show next sections
-            document.getElementById('tripSection').style.display = 'none';
-            document.getElementById('membersSection').style.display = 'block';
-            
-            // Update title
+            $('tripSection').style.display = 'none';
+            $('membersSection').style.display = 'grid';
+            $('newTripBtn').style.display = 'block';
             document.querySelector('h1').textContent = tripData.name;
+            saveToLocal();
+            $('memberName').focus();
         }
 
         // Add a new member to the trip
         function addMember() {
-            const name = document.getElementById('memberName').value.trim();
-            if (!name) {
-                alert('Please enter member name');
+            const name = $('memberName').value.trim();
+            if (!name) { notify('Please enter a member name'); return; }
+
+            if (tripData.members.find(m => m.name.toLowerCase() === name.toLowerCase())) {
+                notify('That member is already on the trip');
                 return;
             }
-            
-            // Check if member already exists
-            if (tripData.members.find(m => m.name === name)) {
-                alert('Member already exists');
-                return;
-            }
-            
-            // Add new member
-            const member = {
-                id: tripData.nextMemberId++,
-                name: name
-            };
-            tripData.members.push(member);
-            
-            // Clear input
-            document.getElementById('memberName').value = '';
-            
-            // Update display
+
+            tripData.members.push({ id: tripData.nextMemberId++, name: name });
+            $('memberName').value = '';
+
             updateMembersDisplay();
             updatePayersDisplay();
             updateParticipantsDisplay();
-            
-            // Show expenses section when we have members
-            if (tripData.members.length >= 2) {
-                document.getElementById('expensesSection').style.display = 'block';
-            }
+
+            if (tripData.members.length >= 2) $('expensesSection').style.display = 'grid';
+            saveToLocal();
+            $('memberName').focus();
         }
 
         // Add a new expense
         function addExpense() {
-            const description = document.getElementById('expenseDescription').value.trim();
-            const amount = parseFloat(document.getElementById('expenseAmount').value);
-            
+            const description = $('expenseDescription').value.trim();
+            const amount = parseFloat($('expenseAmount').value);
+
             if (!description || !amount || amount <= 0) {
-                alert('Please fill description and valid amount');
+                notify('Please add a description and a valid amount');
                 return;
             }
-            
+
             // Get selected payers
             const payers = [];
-            const payerCheckboxes = document.querySelectorAll('#payersList input[type="checkbox"]:checked');
             let totalPaid = 0;
-            
-            payerCheckboxes.forEach(checkbox => {
+            document.querySelectorAll('#payersList input[type="checkbox"]:checked').forEach(checkbox => {
                 const memberId = parseInt(checkbox.dataset.memberId);
-                const amountInput = document.querySelector(`#payerAmount${memberId}`);
-                const paidAmount = parseFloat(amountInput.value) || 0;
-                
+                const paidAmount = parseFloat($(`payerAmount${memberId}`).value) || 0;
                 if (paidAmount > 0) {
                     payers.push({ memberId, amount: paidAmount });
                     totalPaid += paidAmount;
                 }
             });
-            
+
             // Get selected participants
             const participants = [];
-            const participantCheckboxes = document.querySelectorAll('#participantsList input[type="checkbox"]:checked');
-            participantCheckboxes.forEach(checkbox => {
+            document.querySelectorAll('#participantsList input[type="checkbox"]:checked').forEach(checkbox => {
                 participants.push(parseInt(checkbox.dataset.memberId));
             });
-            
-            // Validation
-            if (payers.length === 0) {
-                alert('Please select who paid');
-                return;
-            }
-            if (participants.length === 0) {
-                alert('Please select participants');
-                return;
-            }
+
+            if (payers.length === 0) { notify('Please select who paid and enter their amount'); return; }
+            if (participants.length === 0) { notify('Please select who shares this expense'); return; }
             if (Math.abs(totalPaid - amount) > 0.01) {
-                alert(`Total paid (${totalPaid}) must equal expense amount (${amount})`);
+                notify(`Amounts paid (${money(totalPaid)}) must add up to the expense (${money(amount)})`);
                 return;
             }
-            
-            // Add expense
-            const expense = {
+
+            tripData.expenses.push({
                 id: tripData.nextExpenseId++,
                 description,
                 amount,
+                category: $('expenseCategory').value,
+                date: $('expenseDate').value || today(),
                 payers,
                 participants
-            };
-            tripData.expenses.push(expense);
-            
-            // Clear form
-            document.getElementById('expenseDescription').value = '';
-            document.getElementById('expenseAmount').value = '';
-            document.querySelectorAll('#payersList input, #participantsList input').forEach(input => {
-                input.checked = false;
-                if (input.type === 'number') input.value = '';
             });
-            
-            // Update displays
+
+            // Clear form
+            $('expenseDescription').value = '';
+            $('expenseAmount').value = '';
+            updatePayersDisplay();
+            updateParticipantsDisplay();
+            updatePreview();
+
             updateExpensesDisplay();
             calculateSettlement();
-            
-            // Show settlement section
-            document.getElementById('settlementSection').style.display = 'block';
+            $('settlementSection').style.display = 'grid';
+            saveToLocal();
+        }
+
+        // Remove an expense and recalculate
+        function deleteExpense(id) {
+            tripData.expenses = tripData.expenses.filter(e => e.id !== id);
+            updateExpensesDisplay();
+            if (tripData.expenses.length > 0) {
+                calculateSettlement();
+            } else {
+                settlement = { balances: {}, transactions: [] };
+                $('settlementSection').style.display = 'none';
+            }
+            saveToLocal();
+        }
+
+        // Start over with a fresh trip
+        function resetTrip() {
+            if (!confirm('Start a new trip? The current trip will be removed from this browser.')) return;
+            localStorage.removeItem('tripData');
+            window.onbeforeunload = null;
+            location.reload();
         }
 
         // ===============================
@@ -393,37 +398,25 @@
         // Main function to calculate optimal settlement
         function calculateSettlement() {
             if (tripData.expenses.length === 0) return;
-            
+
             // Step 1: Calculate net balance for each member
             const balances = {};
-            
-            // Initialize balances to 0
-            tripData.members.forEach(member => {
-                balances[member.id] = 0;
-            });
-            
-            // Process each expense
+            tripData.members.forEach(member => { balances[member.id] = 0; });
+
             tripData.expenses.forEach(expense => {
                 // Add what each payer paid
-                expense.payers.forEach(payer => {
-                    balances[payer.memberId] += payer.amount;
-                });
-                
+                expense.payers.forEach(payer => { balances[payer.memberId] += payer.amount; });
+
                 // Subtract what each participant owes (equal split)
                 const sharePerPerson = expense.amount / expense.participants.length;
-                expense.participants.forEach(participantId => {
-                    balances[participantId] -= sharePerPerson;
-                });
+                expense.participants.forEach(participantId => { balances[participantId] -= sharePerPerson; });
             });
-            
+
             // Step 2: Use greedy algorithm with heaps to minimize transactions
             const transactions = minimizeTransactions(balances);
-            
-            // Store results
+
             settlement.balances = balances;
             settlement.transactions = transactions;
-            
-            // Update display
             updateSettlementDisplay();
         }
 
@@ -432,100 +425,91 @@
         function minimizeTransactions(balances) {
             const creditors = new MaxHeap();  // People who should receive money
             const debtors = new MinHeap();    // People who owe money
-            
-            // Separate creditors and debtors
+
             Object.entries(balances).forEach(([memberId, balance]) => {
-                if (balance > 1) {  // Creditor (use 1 rupee threshold to avoid floating point issues)
+                if (balance > 1) {            // 1 rupee threshold avoids floating point issues
                     creditors.push([balance, parseInt(memberId)]);
-                } else if (balance < -1) {  // Debtor
+                } else if (balance < -1) {
                     debtors.push([balance, parseInt(memberId)]);
                 }
             });
-            
+
             const transactions = [];
-            
+
             // Greedy matching: always match biggest creditor with biggest debtor
             while (creditors.size() > 0 && debtors.size() > 0) {
-                const [maxCredit, creditorId] = creditors.pop();  // Biggest creditor
-                const [maxDebt, debtorId] = debtors.pop();       // Biggest debtor
-                
-                // Settle as much as possible between them
+                const [maxCredit, creditorId] = creditors.pop();
+                const [maxDebt, debtorId] = debtors.pop();
+
                 const settleAmount = Math.min(maxCredit, -maxDebt);
-                
+
                 transactions.push({
                     from: debtorId,
                     to: creditorId,
-                    amount: Math.round(settleAmount * 100) / 100  // Round to 2 decimal places
+                    amount: Math.round(settleAmount * 100) / 100
                 });
-                
-                // Calculate remaining balances
+
                 const remainingCredit = maxCredit - settleAmount;
                 const remainingDebt = maxDebt + settleAmount;
-                
-                // If there's still credit/debt remaining, put back in heap
-                if (remainingCredit > 1) {
-                    creditors.push([remainingCredit, creditorId]);
-                }
-                if (remainingDebt < -1) {
-                    debtors.push([remainingDebt, debtorId]);
-                }
+
+                if (remainingCredit > 1) creditors.push([remainingCredit, creditorId]);
+                if (remainingDebt < -1) debtors.push([remainingDebt, debtorId]);
             }
-            
+
             return transactions;
+        }
+
+        // Paid and fair share per member (used for the balance table)
+        function memberTotals() {
+            const t = {};
+            tripData.members.forEach(m => { t[m.id] = { paid: 0, share: 0 }; });
+            tripData.expenses.forEach(e => {
+                e.payers.forEach(p => { if (t[p.memberId]) t[p.memberId].paid += p.amount; });
+                const s = e.amount / e.participants.length;
+                e.participants.forEach(id => { if (t[id]) t[id].share += s; });
+            });
+            return t;
         }
 
         // ===============================
         // DISPLAY UPDATE FUNCTIONS
         // ===============================
 
-        // Update members list display
         function updateMembersDisplay() {
-            const container = document.getElementById('membersList');
-            container.innerHTML = '<h3>Members:</h3>';
-            
-            tripData.members.forEach(member => {
-                container.innerHTML += `<span class="member-chip">${member.name}</span>`;
-            });
+            $('membersList').innerHTML = tripData.members.map(m =>
+                `<span class="tag"><span class="sw" style="background:${mcol(m.id)}">${initial(m.name)}</span>${esc(m.name)}</span>`
+            ).join('');
+            $('membersCount').textContent = tripData.members.length;
         }
 
-        // Update payers checkboxes
         function updatePayersDisplay() {
-            const container = document.getElementById('payersList');
-            container.innerHTML = '';
-            
-            tripData.members.forEach(member => {
-                container.innerHTML += `
-                    <div>
-                        <input type="checkbox" data-member-id="${member.id}" onchange="togglePayerAmount(${member.id})">
-                        ${member.name}
-                        <input type="number" id="payerAmount${member.id}" placeholder="Amount paid" style="display:none; margin-left:10px;">
-                    </div>
-                `;
-            });
+            $('payersList').innerHTML = tripData.members.map(m => `
+                <div class="pickrow">
+                    <label class="pick"><input type="checkbox" data-member-id="${m.id}" onchange="togglePayerAmount(${m.id})">
+                    <span class="sw" style="background:${mcol(m.id)}">${initial(m.name)}</span>${esc(m.name)}</label>
+                    <input type="number" class="amt" id="payerAmount${m.id}" placeholder="Amount paid" min="0" step="any" style="display:none">
+                </div>`).join('');
         }
 
-        // Update participants checkboxes
         function updateParticipantsDisplay() {
-            const container = document.getElementById('participantsList');
-            container.innerHTML = '';
-            
-            tripData.members.forEach(member => {
-                container.innerHTML += `
-                    <div>
-                        <input type="checkbox" data-member-id="${member.id}">
-                        ${member.name}
-                    </div>
-                `;
-            });
+            $('participantsList').innerHTML = tripData.members.map(m => `
+                <div class="pickrow">
+                    <label class="pick"><input type="checkbox" data-member-id="${m.id}">
+                    <span class="sw" style="background:${mcol(m.id)}">${initial(m.name)}</span>${esc(m.name)}</label>
+                </div>`).join('');
         }
 
         // Show/hide amount input when payer is selected
         function togglePayerAmount(memberId) {
             const checkbox = document.querySelector(`#payersList input[data-member-id="${memberId}"]`);
-            const amountInput = document.getElementById(`payerAmount${memberId}`);
-            
+            const amountInput = $(`payerAmount${memberId}`);
+
             if (checkbox.checked) {
-                amountInput.style.display = 'inline';
+                amountInput.style.display = 'inline-block';
+                // Single payer: pre-fill the full expense amount
+                if (!amountInput.value && document.querySelectorAll('#payersList input[type="checkbox"]:checked').length === 1) {
+                    amountInput.value = $('expenseAmount').value;
+                }
                 amountInput.focus();
             } else {
                 amountInput.style.display = 'none';
@@ -533,66 +517,68 @@
             }
         }
 
-        // Update expenses list display
+        // Live "each person pays" preview on the ticket stub
+        function updatePreview() {
+            const amt = parseFloat($('expenseAmount').value) || 0;
+            const n = document.querySelectorAll('#participantsList input:checked').length;
+            $('previewTotal').textContent = money(amt);
+            $('previewShare').textContent = n && amt ? money(Math.round(amt / n * 100) / 100) : '₹0';
+            $('previewCount').textContent = n + (n === 1 ? ' person' : ' people');
+        }
+        document.addEventListener('input', e => { if (e.target.closest('#expensesSection')) updatePreview(); });
+        document.addEventListener('change', e => { if (e.target.closest('#participantsList')) updatePreview(); });
+
         function updateExpensesDisplay() {
-            const container = document.getElementById('expensesList');
-            container.innerHTML = '<h3>Expenses:</h3>';
-            
-            tripData.expenses.forEach(expense => {
-                const payersText = expense.payers.map(p => {
-                    const member = tripData.members.find(m => m.id === p.memberId);
-                    return `${member.name}: ₹${p.amount}`;
-                }).join(', ');
-                
-                container.innerHTML += `
-                    <div class="expense-item">
-                        <strong>${expense.description}</strong> - ₹${expense.amount}
-                        <br>Paid by: ${payersText}
-                    </div>
-                `;
-            });
+            const list = tripData.expenses.slice().reverse().map(e => {
+                const payersText = e.payers.map(p => `${esc(mname(p.memberId))} ${money(p.amount)}`).join(', ');
+                const d = new Date(e.date + 'T00:00:00');
+                const dateText = isNaN(d) ? '' : d.toLocaleDateString('en-IN', {day: 'numeric', month: 'short', year: 'numeric'});
+                const col = CATS[e.category] || CATS.Other;
+                return `
+                    <div class="exp">
+                        <div class="bar" style="background:${col}"></div>
+                        <div class="body">
+                            <strong>${esc(e.description)}</strong>
+                            <div class="cap">${esc(e.category)}${dateText ? ', ' + dateText : ''}</div>
+                            <div class="cap">Paid by ${payersText}. Shared by ${e.participants.length} (${money(Math.round(e.amount / e.participants.length * 100) / 100)} each)</div>
+                        </div>
+                        <div class="side">
+                            <div class="price">${money(e.amount)}</div>
+                            <button class="link" onclick="deleteExpense(${e.id})">Remove</button>
+                        </div>
+                    </div>`;
+            }).join('');
+            $('expensesList').innerHTML = list || '<p class="cap">No expenses yet. Add the first one above.</p>';
         }
 
-        // Update settlement display
         function updateSettlementDisplay() {
-            // Update total amount
-            const totalAmount = tripData.expenses.reduce((sum, expense) => sum + expense.amount, 0);
-            document.getElementById('totalAmount').textContent = `Total Trip Cost: ₹${totalAmount}`;
-            
-            // Update balances
-            const balancesContainer = document.getElementById('balancesList');
-            balancesContainer.innerHTML = '<h3>Net Balances:</h3>';
-            
-            Object.entries(settlement.balances).forEach(([memberId, balance]) => {
-                const member = tripData.members.find(m => m.id == memberId);
-                if (Math.abs(balance) > 1) {  // Only show significant balances
-                    const status = balance > 0 ? `Gets back ₹${balance.toFixed(2)}` : `Owes ₹${(-balance).toFixed(2)}`;
-                    balancesContainer.innerHTML += `
-                        <div class="member-chip">
-                            ${member.name}: ${status}
-                        </div>
-                    `;
-                }
-            });
-            
-            // Update transactions
-            const transactionsContainer = document.getElementById('transactionsList');
-            transactionsContainer.innerHTML = '<h3>Settlement Transactions:</h3>';
-            
-            if (settlement.transactions.length === 0) {
-                transactionsContainer.innerHTML += '<p>Everyone is settled!</p>';
-            } else {
-                settlement.transactions.forEach(transaction => {
-                    const fromMember = tripData.members.find(m => m.id === transaction.from);
-                    const toMember = tripData.members.find(m => m.id === transaction.to);
-                    
-                    transactionsContainer.innerHTML += `
-                        <div class="settlement-item">
-                            <strong>${fromMember.name}</strong> pays <strong>${toMember.name}</strong>: ₹${transaction.amount}
-                        </div>
-                    `;
-                });
-            }
+            const total = tripData.expenses.reduce((sum, e) => sum + e.amount, 0);
+            $('totalAmount').innerHTML = `<div class="cap">Total trip cost</div><div class="big">${money(total)}</div>`;
+            $('perHead').textContent = money(Math.round(total / Math.max(1, tripData.members.length) * 100) / 100);
+
+            // Balance table: paid, fair share, net
+            const t = memberTotals();
+            const rows = tripData.members.map(m => {
+                const b = settlement.balances[m.id] || 0;
+                const status = Math.abs(b) <= 1 ? 'Settled'
+                    : b > 0 ? `<span class="good">Gets back ${money(b)}</span>`
+                    : `<span class="bad">Owes ${money(-b)}</span>`;
+                return `<tr>
+                    <td><span class="tag" style="margin:0;border:0;padding:0"><span class="sw" style="background:${mcol(m.id)}">${initial(m.name)}</span>${esc(m.name)}</span></td>
+                    <td class="n">${money(t[m.id].paid)}</td><td class="n">${money(t[m.id].share)}</td><td class="n">${status}</td></tr>`;
+            }).join('');
+            $('balancesList').innerHTML = `<table><thead><tr><th>Member</th><th class="n">Paid</th><th class="n">Fair share</th><th class="n">Balance</th></tr></thead><tbody>${rows}</tbody></table>`;
+
+            // Settlement passes
+            $('transactionsList').innerHTML = settlement.transactions.length === 0
+                ? '<p class="good">Everyone is settled. No payments needed.</p>'
+                : settlement.transactions.map(tr => `
+                    <div class="pass">
+                        <div><div class="cap">From</div><div class="nm">${esc(mname(tr.from))}</div></div>
+                        <div class="go"><div class="arrow"></div></div>
+                        <div><div class="cap">To</div><div class="nm">${esc(mname(tr.to))}</div></div>
+                        <div class="st"><div class="cap">Amount</div><b>${money(tr.amount)}</b></div>
+                    </div>`).join('');
         }
 
         // ===============================
@@ -602,12 +588,11 @@
         // Download PDF report by calling backend API
         async function downloadPDF() {
             if (tripData.expenses.length === 0) {
-                alert('No expenses to generate report');
+                notify('Add an expense first to create a report');
                 return;
             }
-            
+
             try {
-                // Prepare data for PDF generation
                 const pdfData = {
                     tripName: tripData.name,
                     members: tripData.members,
@@ -624,20 +609,14 @@
                     totalExpenses: tripData.expenses.reduce((sum, expense) => sum + expense.amount, 0)
                 };
 
-                // Call backend API to generate PDF
                 const response = await fetch('/api/generate-pdf', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(pdfData)
                 });
 
-                if (!response.ok) {
-                    throw new Error('PDF generation failed');
-                }
+                if (!response.ok) throw new Error('PDF generation failed');
 
-                // Download the PDF file
                 const blob = await response.blob();
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -647,20 +626,10 @@
                 a.click();
                 window.URL.revokeObjectURL(url);
                 document.body.removeChild(a);
-                
-                alert('PDF downloaded successfully!');
+
+                notify('PDF report downloaded');
             } catch (error) {
-                // If backend fails, show data in alert (fallback)
-                let reportText = `${tripData.name} Settlement Report\n\n`;
-                reportText += `Total Expenses: ₹${tripData.expenses.reduce((sum, exp) => sum + exp.amount, 0)}\n\n`;
-                reportText += 'Settlements:\n';
-                settlement.transactions.forEach(t => {
-                    const from = tripData.members.find(m => m.id === t.from).name;
-                    const to = tripData.members.find(m => m.id === t.to).name;
-                    reportText += `${from} → ${to}: ₹${t.amount}\n`;
-                });
-                
-                alert(reportText);
+                notify('Could not create the PDF. Check your connection and try again.');
                 console.error('PDF Error:', error.message);
             }
         }
@@ -669,43 +638,48 @@
         // UTILITY FUNCTIONS
         // ===============================
 
-        // Save data to localStorage (optional - for persistence)
         function saveToLocal() {
             localStorage.setItem('tripData', JSON.stringify(tripData));
         }
 
-        // Load data from localStorage (optional - for persistence)
         function loadFromLocal() {
             const saved = localStorage.getItem('tripData');
-            if (saved) {
-                tripData = JSON.parse(saved);
-                // Restore UI state
-                if (tripData.name) {
-                    document.getElementById('tripSection').style.display = 'none';
-                    document.getElementById('membersSection').style.display = 'block';
-                    document.querySelector('h1').textContent = tripData.name;
-                    updateMembersDisplay();
-                    updatePayersDisplay();
-                    updateParticipantsDisplay();
-                }
-                if (tripData.expenses.length > 0) {
-                    document.getElementById('expensesSection').style.display = 'block';
-                    document.getElementById('settlementSection').style.display = 'block';
-                    updateExpensesDisplay();
-                    calculateSettlement();
-                }
+            if (!saved) return;
+            try { tripData = JSON.parse(saved); } catch (e) { return; }
+
+            // Older saved trips have no category/date: fill defaults so nothing breaks
+            tripData.expenses.forEach(e => {
+                if (!e.category) e.category = 'Other';
+                if (!e.date) e.date = today();
+            });
+
+            if (tripData.name) {
+                $('tripSection').style.display = 'none';
+                $('membersSection').style.display = 'grid';
+                $('newTripBtn').style.display = 'block';
+                document.querySelector('h1').textContent = tripData.name;
+                updateMembersDisplay();
+                updatePayersDisplay();
+                updateParticipantsDisplay();
+            }
+            if (tripData.members.length >= 2) $('expensesSection').style.display = 'grid';
+            updateExpensesDisplay();
+            if (tripData.expenses.length > 0) {
+                $('settlementSection').style.display = 'grid';
+                calculateSettlement();
             }
         }
 
-        // Load saved data when page loads
         window.onload = function() {
+            $('expenseCategory').innerHTML = Object.keys(CATS).map(c => `<option>${c}</option>`).join('');
+            $('expenseDate').value = today();
+            $('tripName').addEventListener('keydown', e => { if (e.key === 'Enter') createTrip(); });
+            $('memberName').addEventListener('keydown', e => { if (e.key === 'Enter') addMember(); });
+            updateExpensesDisplay();
             loadFromLocal();
         };
 
-        // Save data whenever it changes
-        window.onbeforeunload = function() {
-            saveToLocal();
-        };
-    </script>
+        window.onbeforeunload = function() { saveToLocal(); };
+</script>
 </body>
 </html>
