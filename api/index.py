@@ -1,193 +1,130 @@
+# Minimal FastAPI backend for PDF generation only
+# This file handles one job: convert trip data to PDF report
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
-from typing import List
 from io import BytesIO
 from datetime import datetime
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
 
+# Create FastAPI app
 app = FastAPI()
 
+# Allow all origins for CORS (Cross-Origin Resource Sharing)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=["*"],  # Allow all websites to call this API
+    allow_methods=["*"],  # Allow all HTTP methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allow all headers
 )
 
-class Member(BaseModel):
-    id: int
-    name: str
-
-class Payer(BaseModel):
-    memberId: int
-    amount: int
-
-class Expense(BaseModel):
-    id: int
-    description: str
-    amount: int
-    payers: List[Payer]
-    participants: List[int]
-
-class Balance(BaseModel):
-    memberId: int
-    amount: int
-
-class Transaction(BaseModel):
-    fromId: int
-    toId: int
-    amount: int
-
-class TripData(BaseModel):
-    tripName: str
-    members: List[Member]
-    expenses: List[Expense]
-    balances: List[Balance]
-    transactions: List[Transaction]
-    totalExpenses: int
-
-def format_rupees(paise):
-    return f"Rs {paise / 100:.2f}"
-
-def generate_pdf(data: TripData) -> BytesIO:
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4, topMargin=40, bottomMargin=40)
-    styles = getSampleStyleSheet()
-    story = []
-    
-    # Trip header
-    story.append(Paragraph(data.tripName, styles["Title"]))
-    story.append(Paragraph(
-        f"Generated: {datetime.now().strftime('%d %b %Y, %I:%M %p')}",
-        styles["Normal"]
-    ))
-    story.append(Spacer(1, 20))
-    
-    # Summary box
-    summary_data = [
-        ["Total Expenses", format_rupees(data.totalExpenses)],
-        ["Number of Expenses", str(len(data.expenses))],
-        ["Number of Members", str(len(data.members))]
-    ]
-    summary_table = Table(summary_data, colWidths=[200, 150])
-    summary_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), colors.HexColor("#FBF9F4")),
-        ("BOX", (0, 0), (-1, -1), 2, colors.HexColor("#E4A93F")),
-        ("INNERGRID", (0, 0), (-1, -1), 1, colors.HexColor("#D9D4C7")),
-        ("FONTNAME", (0, 0), (0, -1), "Helvetica-Bold"),
-        ("FONTSIZE", (1, 0), (1, 0), 14),
-        ("TEXTCOLOR", (1, 0), (1, 0), colors.HexColor("#E4A93F")),
-        ("ALIGN", (1, 0), (1, -1), "RIGHT"),
-        ("PADDING", (0, 0), (-1, -1), 8)
-    ]))
-    story.append(summary_table)
-    story.append(Spacer(1, 20))
-    
-    # Member lookup
-    member_map = {m.id: m.name for m in data.members}
-    
-    # Expenses section
-    if data.expenses:
-        story.append(Paragraph("Expenses", styles["Heading2"]))
-        story.append(Spacer(1, 10))
-        
-        for exp in data.expenses:
-            story.append(Paragraph(
-                f"<b>{exp.description}</b> - {format_rupees(exp.amount)}",
-                styles["Heading3"]
-            ))
-            
-            payer_rows = [["Paid by", "Amount"]]
-            for p in exp.payers:
-                payer_rows.append([member_map.get(p.memberId, "Unknown"), format_rupees(p.amount)])
-            
-            payer_table = Table(payer_rows, colWidths=[180, 100])
-            payer_table.setStyle(TableStyle([
-                ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2b2b2b")),
-                ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f2f2f2")])
-            ]))
-            story.append(payer_table)
-            story.append(Spacer(1, 15))
-    
-    # Net balances
-    story.append(Paragraph("Net Balances", styles["Heading2"]))
-    story.append(Spacer(1, 10))
-    
-    balance_rows = [["Member", "Amount", "Status"]]
-    for b in data.balances:
-        amount = b.amount / 100
-        if amount > 0:
-            status = "Gets back"
-        elif amount < 0:
-            status = "Owes"
-        else:
-            status = "Settled"
-        balance_rows.append([member_map.get(b.memberId, "Unknown"), f"{abs(amount):.2f}", status])
-    
-    balance_table = Table(balance_rows, colWidths=[150, 100, 100])
-    balance_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1F2A3C")),
-        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-        ("ALIGN", (1, 1), (1, -1), "RIGHT")
-    ]))
-    story.append(balance_table)
-    story.append(Spacer(1, 20))
-    
-    # Settlement transactions
-    story.append(Paragraph("Settlement Transactions", styles["Heading2"]))
-    story.append(Spacer(1, 10))
-    
-    if data.transactions:
-        txn_rows = [["From", "To", "Amount"]]
-        for t in data.transactions:
-            txn_rows.append([
-                member_map.get(t.fromId, "Unknown"),
-                member_map.get(t.toId, "Unknown"),
-                format_rupees(t.amount)
-            ])
-        
-        txn_table = Table(txn_rows, colWidths=[150, 150, 100])
-        txn_table.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2b2b2b")),
-            ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-            ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ("GRID", (0, 0), (-1, -1), 0.5, colors.grey)
-        ]))
-        story.append(txn_table)
-    else:
-        story.append(Paragraph("Everyone is settled.", styles["Normal"]))
-    
-    doc.build(story)
-    buffer.seek(0)
-    return buffer
-
 @app.post("/api/generate-pdf")
-async def generate_trip_pdf(data: TripData):
+async def generate_pdf(data: dict):
+    """
+    Main function that receives trip data and returns PDF file
+    Input: JSON with trip name, members, expenses, balances, transactions
+    Output: PDF file for download
+    """
     try:
-        pdf_buffer = generate_pdf(data)
-        safe_name = data.tripName.replace(" ", "_")
+        # Create PDF in memory (not saved to disk)
+        buffer = BytesIO()
         
+        # Set up PDF document with A4 page size
+        doc = SimpleDocTemplate(buffer, pagesize=A4)
+        styles = getSampleStyleSheet()  # Get default text styles
+        story = []  # List to store all PDF content
+        
+        # Add trip title
+        title = Paragraph(f"<b>{data['tripName']} - Settlement Report</b>", styles['Title'])
+        story.append(title)
+        
+        # Add generation date
+        date_text = f"Generated on: {datetime.now().strftime('%d %B %Y at %I:%M %p')}"
+        story.append(Paragraph(date_text, styles['Normal']))
+        story.append(Paragraph("<br/><br/>", styles['Normal']))  # Add some space
+        
+        # Create summary table
+        total_amount = data.get('totalExpenses', 0)
+        num_expenses = len(data.get('expenses', []))
+        num_members = len(data.get('members', []))
+        
+        summary_data = [
+            ['Trip Summary', ''],
+            ['Total Amount Spent', f'Rs. {total_amount:.2f}'],
+            ['Number of Expenses', str(num_expenses)],
+            ['Number of Members', str(num_members)]
+        ]
+        
+        summary_table = Table(summary_data)
+        summary_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),    # Header background
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke), # Header text color
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),             # Left align all text
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'), # Bold header
+            ('FONTSIZE', (0, 0), (-1, -1), 12),              # Font size
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),          # Header padding
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),  # Data rows background
+        ]))
+        story.append(summary_table)
+        story.append(Paragraph("<br/><br/>", styles['Normal']))
+        
+        # Add settlement transactions if any exist
+        transactions = data.get('transactions', [])
+        if transactions:
+            story.append(Paragraph("<b>Who Pays Whom:</b>", styles['Heading2']))
+            
+            # Create member ID to name mapping for easy lookup
+            member_names = {m['id']: m['name'] for m in data.get('members', [])}
+            
+            # Build transactions table
+            txn_data = [['From', 'To', 'Amount']]  # Table header
+            for txn in transactions:
+                from_name = member_names.get(txn['fromId'], 'Unknown')
+                to_name = member_names.get(txn['toId'], 'Unknown')
+                amount = f"Rs. {txn['amount']:.2f}"
+                txn_data.append([from_name, to_name, amount])
+            
+            txn_table = Table(txn_data)
+            txn_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, -1), 11),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.lightblue),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            story.append(txn_table)
+        else:
+            story.append(Paragraph("Everyone is already settled! No payments needed.", styles['Normal']))
+        
+        # Build the PDF with all content
+        doc.build(story)
+        buffer.seek(0)  # Reset buffer pointer to beginning
+        
+        # Create safe filename (remove spaces and special characters)
+        safe_filename = data['tripName'].replace(' ', '_').replace('/', '_')
+        
+        # Return PDF as downloadable file
         return StreamingResponse(
-            pdf_buffer,
+            buffer,
             media_type="application/pdf",
-            headers={"Content-Disposition": f'attachment; filename="{safe_name}_settlement.pdf"'}
+            headers={"Content-Disposition": f"attachment; filename={safe_filename}_settlement.pdf"}
         )
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        # If anything goes wrong, return error message
+        raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
 
 @app.get("/api/health")
 def health_check():
-    return {"status": "ok"}
+    """Simple health check endpoint to test if API is working"""
+    return {"status": "API is working!", "timestamp": datetime.now().isoformat()}
 
+# This makes the app work with Vercel serverless functions
 handler = app

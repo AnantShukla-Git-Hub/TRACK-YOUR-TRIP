@@ -1,29 +1,13 @@
 {
-  "builds": [
-    {
-      "src": "frontend-trip/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    },
-    {
-      "src": "api/index.py",
-      "use": "@vercel/python"
+  "functions": {
+    "api/index.py": {
+      "runtime": "python3.9"
     }
-  ],
-  "routes": [
+  },
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/index.py"
-    },
-    {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/frontend-trip/$1"
+      "source": "/api/(.*)",
+      "destination": "/api/index.py"
     }
-  ],
-  "outputDirectory": "frontend-trip/dist"
+  ]
 }

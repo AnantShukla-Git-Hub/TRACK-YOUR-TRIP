@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trip Expense Splitter</title>
+    <style>
+        /* Simple CSS styles for the expense splitter app */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px solid #f0f0f0;
+            border-radius: 10px;
+        }
+        
+        input, button, select {
+            padding: 10px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        button {
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+            border: none;
+        }
+        
+        button:hover {
+            background: #45a049;
+        }
+        
+        .pdf-btn {
+            background: #ff6b35;
+        }
+        
+        .pdf-btn:hover {
+            background: #e55a2b;
+        }
+        
+        .member-chip {
+            display: inline-block;
+            background: #e3f2fd;
+            padding: 8px 12px;
+            margin: 3px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+        
+        .expense-item {
+            background: #f9f9f9;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .settlement-item {
+            background: #fff3cd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border-left: 4px solid #ff6b35;
+        }
+        
+        .total-amount {
+            font-size: 24px;
+            font-weight: bold;
+            color: #ff6b35;
+            text-align: center;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Trip Expense Splitter</h1>
+        
+        <!-- Trip Creation Section -->
+        <div id="tripSection" class="section">
+            <h2>Create Trip</h2>
+            <input type="text" id="tripName" placeholder="Trip Name (e.g., Goa 2024)" />
+            <button onclick="createTrip()">Start Trip</button>
+        </div>
+        
+        <!-- Members Section -->
+        <div id="membersSection" class="section" style="display:none">
+            <h2>Add Members</h2>
+            <input type="text" id="memberName" placeholder="Member Name" />
+            <button onclick="addMember()">Add Member</button>
+            <div id="membersList"></div>
+        </div>
+        
+        <!-- Expenses Section -->
+        <div id="expensesSection" class="section" style="display:none">
+            <h2>Add Expense</h2>
+            <input type="text" id="expenseDescription" placeholder="What was the expense?" />
+            <input type="number" id="expenseAmount" placeholder="Amount in Rupees" />
+            
+            <h3>Who paid?</h3>
+            <div id="payersList"></div>
+            
+            <h3>Split among whom?</h3>
+            <div id="participantsList"></div>
+            
+            <button onclick="addExpense()">Add Expense</button>
+            <div id="expensesList"></div>
+        </div>
+        
+        <!-- Settlement Section -->
+        <div id="settlementSection" class="section" style="display:none">
+            <h2>Settlement</h2>
+            <div class="total-amount" id="totalAmount"></div>
+            <div id="balancesList"></div>
+            <div id="transactionsList"></div>
+            <button class="pdf-btn" onclick="downloadPDF()">Download PDF Report</button>
+        </div>
+    </div>
+
+    <script>
+        // Global variables to store all trip data
+        let tripData = {
+            name: '',
+            members: [],        // [{id: 1, name: 'Anant'}, ...]
+            expenses: [],       // [{id: 1, description: 'Hotel', amount: 1200, payers: [...], participants: [...]}]
+            nextMemberId: 1,
+            nextExpenseId: 1
+        };
+
+        // Data structure for settlement calculations
+        let settlement = {
+            balances: {},       // {memberId: netBalance}
+            transactions: []    // [{from: id, to: id, amount: 100}]
+        };
+
+        // ===============================
+        // HEAP DATA STRUCTURE FOR GREEDY ALGORITHM
+        // ===============================
+        
+        // MinHeap class - smallest element at top
+        class MinHeap {
+            constructor() {
+                this.heap = [];
+            }
+
+            // Add element to heap
+            push(value) {
+                this.heap.push(value);
+                this.bubbleUp(this.heap.length - 1);
+            }
+
+            // Remove and return smallest element
+            pop() {
+                if (this.heap.length === 0) return null;
+                if (this.heap.length === 1) return this.heap.pop();
+                
+                const min = this.heap[0];
+                this.heap[0] = this.heap.pop();
+                this.bubbleDown(0);
+                return min;
+            }
+
+            // Move element up to maintain heap property
+            bubbleUp(index) {
+                while (index > 0) {
+                    const parent = Math.floor((index - 1) / 2);
+                    if (this.heap[parent][0] <= this.heap[index][0]) break;
+                    [this.heap[parent], this.heap[index]] = [this.heap[index], this.heap[parent]];
+                    index = parent;
+                }
+            }
+
+            // Move element down to maintain heap property
+            bubbleDown(index) {
+                while (true) {
+                    let smallest = index;
+                    const left = 2 * index + 1;
+                    const right = 2 * index + 2;
+
+                    if (left < this.heap.length && this.heap[left][0] < this.heap[smallest][0]) {
+                        smallest = left;
+                    }
+                    if (right < this.heap.length && this.heap[right][0] < this.heap[smallest][0]) {
+                        smallest = right;
+                    }
+                    if (smallest === index) break;
+
+                    [this.heap[index], this.heap[smallest]] = [this.heap[smallest], this.heap[index]];
+                    index = smallest;
+                }
+            }
+
+            size() {
+                return this.heap.length;
+            }
+        }
+
+        // MaxHeap class - largest element at top (extends MinHeap but reverses comparison)
+        class MaxHeap extends MinHeap {
+            bubbleUp(index) {
+                while (index > 0) {
+                    const parent = Math.floor((index - 1) / 2);
+                    if (this.heap[parent][0] >= this.heap[index][0]) break;
+                    [this.heap[parent], this.heap[index]] = [this.heap[index], this.heap[parent]];
+                    index = parent;
+                }
+            }
+
+            bubbleDown(index) {
+                while (true) {
+                    let largest = index;
+                    const left = 2 * index + 1;
+                    const right = 2 * index + 2;
+
+                    if (left < this.heap.length && this.heap[left][0] > this.heap[largest][0]) {
+                        largest = left;
+                    }
+                    if (right < this.heap.length && this.heap[right][0] > this.heap[largest][0]) {
+                        largest = right;
+                    }
+                    if (largest === index) break;
+
+                    [this.heap[index], this.heap[largest]] = [this.heap[largest], this.heap[index]];
+                    index = largest;
+                }
+            }
+        }
+
+        // ===============================
+        // CORE FUNCTIONS
+        // ===============================
+
+        // Create a new trip - initialize everything
+        function createTrip() {
+            const name = document.getElementById('tripName').value.trim();
+            if (!name) {
+                alert('Please enter trip name');
+                return;
+            }
+            
+            tripData.name = name;
+            
+            // Show next sections
+            document.getElementById('tripSection').style.display = 'none';
+            document.getElementById('membersSection').style.display = 'block';
+            
+            // Update title
+            document.querySelector('h1').textContent = tripData.name;
+        }
+
+        // Add a new member to the trip
+        function addMember() {
+            const name = document.getElementById('memberName').value.trim();
+            if (!name) {
+                alert('Please enter member name');
+                return;
+            }
+            
+            // Check if member already exists
+            if (tripData.members.find(m => m.name === name)) {
+                alert('Member already exists');
+                return;
+            }
+            
+            // Add new member
+            const member = {
+                id: tripData.nextMemberId++,
+                name: name
+            };
+            tripData.members.push(member);
+            
+            // Clear input
+            document.getElementById('memberName').value = '';
+            
+            // Update display
+            updateMembersDisplay();
+            updatePayersDisplay();
+            updateParticipantsDisplay();
+            
+            // Show expenses section when we have members
+            if (tripData.members.length >= 2) {
+                document.getElementById('expensesSection').style.display = 'block';
+            }
+        }
+
+        // Add a new expense
+        function addExpense() {
+            const description = document.getElementById('expenseDescription').value.trim();
+            const amount = parseFloat(document.getElementById('expenseAmount').value);
+            
+            if (!description || !amount || amount <= 0) {
+                alert('Please fill description and valid amount');
+                return;
+            }
+            
+            // Get selected payers
+            const payers = [];
+            const payerCheckboxes = document.querySelectorAll('#payersList input[type="checkbox"]:checked');
+            let totalPaid = 0;
+            
+            payerCheckboxes.forEach(checkbox => {
+                const memberId = parseInt(checkbox.dataset.memberId);
+                const amountInput = document.querySelector(`#payerAmount${memberId}`);
+                const paidAmount = parseFloat(amountInput.value) || 0;
+                
+                if (paidAmount > 0) {
+                    payers.push({ memberId, amount: paidAmount });
+                    totalPaid += paidAmount;
+                }
+            });
+            
+            // Get selected participants
+            const participants = [];
+            const participantCheckboxes = document.querySelectorAll('#participantsList input[type="checkbox"]:checked');
+            participantCheckboxes.forEach(checkbox => {
+                participants.push(parseInt(checkbox.dataset.memberId));
+            });
+            
+            // Validation
+            if (payers.length === 0) {
+                alert('Please select who paid');
+                return;
+            }
+            if (participants.length === 0) {
+                alert('Please select participants');
+                return;
+            }
+            if (Math.abs(totalPaid - amount) > 0.01) {
+                alert(`Total paid (${totalPaid}) must equal expense amount (${amount})`);
+                return;
+            }
+            
+            // Add expense
+            const expense = {
+                id: tripData.nextExpenseId++,
+                description,
+                amount,
+                payers,
+                participants
+            };
+            tripData.expenses.push(expense);
+            
+            // Clear form
+            document.getElementById('expenseDescription').value = '';
+            document.getElementById('expenseAmount').value = '';
+            document.querySelectorAll('#payersList input, #participantsList input').forEach(input => {
+                input.checked = false;
+                if (input.type === 'number') input.value = '';
+            });
+            
+            // Update displays
+            updateExpensesDisplay();
+            calculateSettlement();
+            
+            // Show settlement section
+            document.getElementById('settlementSection').style.display = 'block';
+        }
+
+        // ===============================
+        // SETTLEMENT ALGORITHM - CORE LOGIC
+        // ===============================
+
+        // Main function to calculate optimal settlement
+        function calculateSettlement() {
+            if (tripData.expenses.length === 0) return;
+            
+            // Step 1: Calculate net balance for each member
+            const balances = {};
+            
+            // Initialize balances to 0
+            tripData.members.forEach(member => {
+                balances[member.id] = 0;
+            });
+            
+            // Process each expense
+            tripData.expenses.forEach(expense => {
+                // Add what each payer paid
+                expense.payers.forEach(payer => {
+                    balances[payer.memberId] += payer.amount;
+                });
+                
+                // Subtract what each participant owes (equal split)
+                const sharePerPerson = expense.amount / expense.participants.length;
+                expense.participants.forEach(participantId => {
+                    balances[participantId] -= sharePerPerson;
+                });
+            });
+            
+            // Step 2: Use greedy algorithm with heaps to minimize transactions
+            const transactions = minimizeTransactions(balances);
+            
+            // Store results
+            settlement.balances = balances;
+            settlement.transactions = transactions;
+            
+            // Update display
+            updateSettlementDisplay();
+        }
+
+        // Greedy algorithm to minimize number of transactions
+        // Time Complexity: O(n log n) where n = number of members
+        function minimizeTransactions(balances) {
+            const creditors = new MaxHeap();  // People who should receive money
+            const debtors = new MinHeap();    // People who owe money
+            
+            // Separate creditors and debtors
+            Object.entries(balances).forEach(([memberId, balance]) => {
+                if (balance > 1) {  // Creditor (use 1 rupee threshold to avoid floating point issues)
+                    creditors.push([balance, parseInt(memberId)]);
+                } else if (balance < -1) {  // Debtor
+                    debtors.push([balance, parseInt(memberId)]);
+                }
+            });
+            
+            const transactions = [];
+            
+            // Greedy matching: always match biggest creditor with biggest debtor
+            while (creditors.size() > 0 && debtors.size() > 0) {
+                const [maxCredit, creditorId] = creditors.pop();  // Biggest creditor
+                const [maxDebt, debtorId] = debtors.pop();       // Biggest debtor
+                
+                // Settle as much as possible between them
+                const settleAmount = Math.min(maxCredit, -maxDebt);
+                
+                transactions.push({
+                    from: debtorId,
+                    to: creditorId,
+                    amount: Math.round(settleAmount * 100) / 100  // Round to 2 decimal places
+                });
+                
+                // Calculate remaining balances
+                const remainingCredit = maxCredit - settleAmount;
+                const remainingDebt = maxDebt + settleAmount;
+                
+                // If there's still credit/debt remaining, put back in heap
+                if (remainingCredit > 1) {
+                    creditors.push([remainingCredit, creditorId]);
+                }
+                if (remainingDebt < -1) {
+                    debtors.push([remainingDebt, debtorId]);
+                }
+            }
+            
+            return transactions;
+        }
+
+        // ===============================
+        // DISPLAY UPDATE FUNCTIONS
+        // ===============================
+
+        // Update members list display
+        function updateMembersDisplay() {
+            const container = document.getElementById('membersList');
+            container.innerHTML = '<h3>Members:</h3>';
+            
+            tripData.members.forEach(member => {
+                container.innerHTML += `<span class="member-chip">${member.name}</span>`;
+            });
+        }
+
+        // Update payers checkboxes
+        function updatePayersDisplay() {
+            const container = document.getElementById('payersList');
+            container.innerHTML = '';
+            
+            tripData.members.forEach(member => {
+                container.innerHTML += `
+                    <div>
+                        <input type="checkbox" data-member-id="${member.id}" onchange="togglePayerAmount(${member.id})">
+                        ${member.name}
+                        <input type="number" id="payerAmount${member.id}" placeholder="Amount paid" style="display:none; margin-left:10px;">
+                    </div>
+                `;
+            });
+        }
+
+        // Update participants checkboxes
+        function updateParticipantsDisplay() {
+            const container = document.getElementById('participantsList');
+            container.innerHTML = '';
+            
+            tripData.members.forEach(member => {
+                container.innerHTML += `
+                    <div>
+                        <input type="checkbox" data-member-id="${member.id}">
+                        ${member.name}
+                    </div>
+                `;
+            });
+        }
+
+        // Show/hide amount input when payer is selected
+        function togglePayerAmount(memberId) {
+            const checkbox = document.querySelector(`#payersList input[data-member-id="${memberId}"]`);
+            const amountInput = document.getElementById(`payerAmount${memberId}`);
+            
+            if (checkbox.checked) {
+                amountInput.style.display = 'inline';
+                amountInput.focus();
+            } else {
+                amountInput.style.display = 'none';
+                amountInput.value = '';
+            }
+        }
+
+        // Update expenses list display
+        function updateExpensesDisplay() {
+            const container = document.getElementById('expensesList');
+            container.innerHTML = '<h3>Expenses:</h3>';
+            
+            tripData.expenses.forEach(expense => {
+                const payersText = expense.payers.map(p => {
+                    const member = tripData.members.find(m => m.id === p.memberId);
+                    return `${member.name}: ₹${p.amount}`;
+                }).join(', ');
+                
+                container.innerHTML += `
+                    <div class="expense-item">
+                        <strong>${expense.description}</strong> - ₹${expense.amount}
+                        <br>Paid by: ${payersText}
+                    </div>
+                `;
+            });
+        }
+
+        // Update settlement display
+        function updateSettlementDisplay() {
+            // Update total amount
+            const totalAmount = tripData.expenses.reduce((sum, expense) => sum + expense.amount, 0);
+            document.getElementById('totalAmount').textContent = `Total Trip Cost: ₹${totalAmount}`;
+            
+            // Update balances
+            const balancesContainer = document.getElementById('balancesList');
+            balancesContainer.innerHTML = '<h3>Net Balances:</h3>';
+            
+            Object.entries(settlement.balances).forEach(([memberId, balance]) => {
+                const member = tripData.members.find(m => m.id == memberId);
+                if (Math.abs(balance) > 1) {  // Only show significant balances
+                    const status = balance > 0 ? `Gets back ₹${balance.toFixed(2)}` : `Owes ₹${(-balance).toFixed(2)}`;
+                    balancesContainer.innerHTML += `
+                        <div class="member-chip">
+                            ${member.name}: ${status}
+                        </div>
+                    `;
+                }
+            });
+            
+            // Update transactions
+            const transactionsContainer = document.getElementById('transactionsList');
+            transactionsContainer.innerHTML = '<h3>Settlement Transactions:</h3>';
+            
+            if (settlement.transactions.length === 0) {
+                transactionsContainer.innerHTML += '<p>Everyone is settled!</p>';
+            } else {
+                settlement.transactions.forEach(transaction => {
+                    const fromMember = tripData.members.find(m => m.id === transaction.from);
+                    const toMember = tripData.members.find(m => m.id === transaction.to);
+                    
+                    transactionsContainer.innerHTML += `
+                        <div class="settlement-item">
+                            <strong>${fromMember.name}</strong> pays <strong>${toMember.name}</strong>: ₹${transaction.amount}
+                        </div>
+                    `;
+                });
+            }
+        }
+
+        // ===============================
+        // PDF GENERATION
+        // ===============================
+
+        // Download PDF report by calling backend API
+        async function downloadPDF() {
+            if (tripData.expenses.length === 0) {
+                alert('No expenses to generate report');
+                return;
+            }
+            
+            try {
+                // Prepare data for PDF generation
+                const pdfData = {
+                    tripName: tripData.name,
+                    members: tripData.members,
+                    expenses: tripData.expenses,
+                    balances: Object.entries(settlement.balances).map(([memberId, amount]) => ({
+                        memberId: parseInt(memberId),
+                        amount: amount
+                    })),
+                    transactions: settlement.transactions.map(t => ({
+                        fromId: t.from,
+                        toId: t.to,
+                        amount: t.amount
+                    })),
+                    totalExpenses: tripData.expenses.reduce((sum, expense) => sum + expense.amount, 0)
+                };
+
+                // Call backend API to generate PDF
+                const response = await fetch('/api/generate-pdf', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(pdfData)
+                });
+
+                if (!response.ok) {
+                    throw new Error('PDF generation failed');
+                }
+
+                // Download the PDF file
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${tripData.name.replace(/\s+/g, '_')}_settlement.pdf`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                
+                alert('PDF downloaded successfully!');
+            } catch (error) {
+                // If backend fails, show data in alert (fallback)
+                let reportText = `${tripData.name} Settlement Report\n\n`;
+                reportText += `Total Expenses: ₹${tripData.expenses.reduce((sum, exp) => sum + exp.amount, 0)}\n\n`;
+                reportText += 'Settlements:\n';
+                settlement.transactions.forEach(t => {
+                    const from = tripData.members.find(m => m.id === t.from).name;
+                    const to = tripData.members.find(m => m.id === t.to).name;
+                    reportText += `${from} → ${to}: ₹${t.amount}\n`;
+                });
+                
+                alert(reportText);
+                console.error('PDF Error:', error.message);
+            }
+        }
+
+        // ===============================
+        // UTILITY FUNCTIONS
+        // ===============================
+
+        // Save data to localStorage (optional - for persistence)
+        function saveToLocal() {
+            localStorage.setItem('tripData', JSON.stringify(tripData));
+        }
+
+        // Load data from localStorage (optional - for persistence)
+        function loadFromLocal() {
+            const saved = localStorage.getItem('tripData');
+            if (saved) {
+                tripData = JSON.parse(saved);
+                // Restore UI state
+                if (tripData.name) {
+                    document.getElementById('tripSection').style.display = 'none';
+                    document.getElementById('membersSection').style.display = 'block';
+                    document.querySelector('h1').textContent = tripData.name;
+                    updateMembersDisplay();
+                    updatePayersDisplay();
+                    updateParticipantsDisplay();
+                }
+                if (tripData.expenses.length > 0) {
+                    document.getElementById('expensesSection').style.display = 'block';
+                    document.getElementById('settlementSection').style.display = 'block';
+                    updateExpensesDisplay();
+                    calculateSettlement();
+                }
+            }
+        }
+
+        // Load saved data when page loads
+        window.onload = function() {
+            loadFromLocal();
+        };
+
+        // Save data whenever it changes
+        window.onbeforeunload = function() {
+            saveToLocal();
+        };
+    </script>
+</body>
+</html>

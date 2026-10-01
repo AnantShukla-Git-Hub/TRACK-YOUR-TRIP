@@ -1,124 +1,129 @@
 # Trip Expense Splitter
 
-Split trip expenses fairly among friends with optimal settlement using greedy algorithm.
+A simple web app to split trip expenses fairly using greedy algorithm for optimal settlement.
 
-## Features
-
-- Create trips and add members
-- Track expenses with multiple payers
-- Smart settlement with minimal transactions
-- Download PDF settlement report
-- Data stored locally in browser
-- Fast and simple
-
-## Algorithm
-
-Uses greedy algorithm with max/min heaps for optimal settlement.
-Time complexity: O(n log n)
-
-Example: 4 people settling needs only 3 transactions instead of 6.
-
-### Settlement Calculation Example
-
-**Trip: Goa 2024 with 3 friends**
-
-**Expenses:**
-```
-Expense 1: Hotel Rs.1200
-- Anant paid Rs.1200
-- Split among: Anant, Rahul, Amit (Rs.400 each)
-
-Expense 2: Food Rs.600  
-- Rahul paid Rs.600
-- Split among: Anant, Rahul, Amit (Rs.200 each)
-
-Expense 3: Transport Rs.900
-- Amit paid Rs.900  
-- Split among: Anant, Rahul, Amit (Rs.300 each)
-```
-
-**Step 1: Calculate what each person paid vs owes**
-```
-Anant: Paid Rs.1200, Owes Rs.900 (400+200+300) → Net: +Rs.300
-Rahul: Paid Rs.600, Owes Rs.900 (400+200+300)  → Net: -Rs.300  
-Amit:  Paid Rs.900, Owes Rs.900 (400+200+300)  → Net: Rs.0
-```
-
-**Step 2: Greedy settlement (match largest creditor with largest debtor)**
-```
-Creditors: Anant (+Rs.300)
-Debtors:   Rahul (-Rs.300)
-Settled:   Amit (Rs.0)
-
-Final settlement: Rahul pays Anant Rs.300
-```
-
-**Result: 1 transaction settles everything instead of 6 individual payments**
-
-**Without algorithm:** 6 transactions needed
-**With algorithm:** 1 transaction needed
-
-This scales to larger groups - 10 people might need only 4-5 transactions instead of 45.
-
-## Tech Stack
-
-Frontend: React + Vite  
-Backend: FastAPI (Python)  
-Storage: localStorage  
-PDF: ReportLab  
-Deployment: Vercel
-
-## Local Development
-
-### Frontend:
-```bash
-cd frontend-trip
-npm install
-npm run dev
-```
-
-### Backend (for PDF):
-```bash
-pip install -r requirements.txt
-uvicorn api.index:app --reload
-```
-
-## Deploy to Vercel
-
-```bash
-git push origin main
-```
-
-Vercel auto-deploys from GitHub.
-
-Or use Vercel CLI:
-```bash
-vercel
-```
-
-## Project Structure
+## Project Structure (Minimal)
 
 ```
 TRACK-YOUR-TRIP/
-├── api/
-│   └── index.py          # PDF generation endpoint
-├── frontend-trip/
-│   ├── src/
-│   │   ├── components/   # React components
-│   │   └── services/     # Storage & settlement logic
-│   └── package.json
-├── requirements.txt      # Python dependencies
-└── vercel.json          # Deployment config
+├── index.html           # Complete frontend (HTML + CSS + JavaScript)
+├── api/index.py         # Backend for PDF generation only  
+├── requirements.txt     # 3 Python dependencies
+├── vercel.json         # Deployment configuration
+└── README.md           # This file
 ```
 
-## How It Works
+**Total: 5 files only!**
 
-1. Enter trip details and members
-2. Add expenses (who paid, who participated)
-3. Algorithm calculates net balances
-4. Minimizes settlement transactions
-5. Download professional PDF report
+## Algorithm Explained
 
-All calculations use integer arithmetic (paise) to avoid decimal errors.
+**Problem:** Split expenses among friends with minimum transactions  
+**Solution:** Greedy algorithm with heaps - O(n log n) complexity
 
-Built as a learning project.
+### Example Calculation
+
+**Trip: Goa with Anant, Rahul, Amit**
+
+```
+Expense 1: Hotel Rs.1200 (Anant paid, split 3 ways = Rs.400 each)
+Expense 2: Food Rs.600 (Rahul paid, split 3 ways = Rs.200 each) 
+Expense 3: Transport Rs.900 (Amit paid, split 3 ways = Rs.300 each)
+```
+
+**Net Balances:**
+- Anant: Paid Rs.1200, Owes Rs.900 → Gets Rs.300
+- Rahul: Paid Rs.600, Owes Rs.900 → Owes Rs.300  
+- Amit: Paid Rs.900, Owes Rs.900 → Settled Rs.0
+
+**Settlement:** Rahul pays Anant Rs.300 (1 transaction instead of 6)
+
+## Features
+
+- Add trip members
+- Record expenses (who paid, split among whom)
+- Smart settlement calculation (greedy algorithm)
+- Professional PDF report generation
+- Data saved in browser (localStorage)
+- Clean, beginner-friendly code with detailed comments
+
+## Tech Stack
+
+**Frontend:** Vanilla HTML + CSS + JavaScript (no frameworks)  
+**Backend:** FastAPI (Python) for PDF generation only  
+**Algorithm:** Min/Max heaps for greedy optimization  
+**Deployment:** Vercel (serverless)
+
+## Local Development
+
+### Run Frontend:
+```bash
+# Open index.html in browser
+python -m http.server 8080
+# Then visit: http://localhost:8080
+```
+
+### Run Backend (for PDF):
+```bash
+pip install -r requirements.txt
+uvicorn api.index:app --reload --port 8000
+```
+
+## Deployment to Vercel
+
+**Method 1: GitHub**
+1. Push code to GitHub
+2. Connect repository to Vercel  
+3. Auto-deploy!
+
+**Method 2: CLI**
+```bash
+npm install -g vercel
+vercel
+```
+
+## Code Structure Explained
+
+### index.html
+- **Lines 1-150:** CSS styling (clean, modern design)
+- **Lines 151-200:** HTML structure (trip form, members, expenses)  
+- **Lines 201-300:** Heap classes (MinHeap, MaxHeap for algorithm)
+- **Lines 301-400:** Core functions (add members, expenses, settlement)
+- **Lines 401-500:** Settlement algorithm (greedy with heaps)
+- **Lines 501-600:** Display update functions
+- **Lines 601-700:** PDF generation and utilities
+
+### api/index.py  
+- **Lines 1-20:** FastAPI setup with CORS
+- **Lines 21-80:** PDF generation function with ReportLab
+- **Lines 81-100:** API endpoints and Vercel handler
+
+## Algorithm Details
+
+1. **Calculate Net Balance:** For each person, subtract total owed from total paid
+2. **Separate Creditors/Debtors:** Use MaxHeap for creditors, MinHeap for debtors  
+3. **Greedy Matching:** Always match biggest creditor with biggest debtor
+4. **Minimize Transactions:** Settle maximum amount possible in each transaction
+
+**Time Complexity:** O(n log n) where n = number of members  
+**Space Complexity:** O(n) for heaps and balances
+
+## Money Handling
+
+All calculations use floating-point numbers with 2 decimal precision.  
+Threshold of Rs.1 used to avoid minor rounding errors.
+
+## Comments Style
+
+Code includes detailed comments explaining:
+- **What** each function does
+- **Why** specific algorithms are chosen  
+- **How** complex logic works step-by-step
+- **When** to use different approaches
+
+Perfect for learning data structures and algorithms!
+
+Built as an educational project demonstrating:
+- Greedy algorithms
+- Heap data structures  
+- Full-stack web development
+- Clean code practices
