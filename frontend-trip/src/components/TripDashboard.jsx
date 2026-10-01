@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { listMembers, listExpenses, getSettlement } from '../api';
+import * as storage from '../services/storage';
+import { getSettlement } from '../services/settlement';
 import MemberSection from './MemberSection';
 import ExpenseSection from './ExpenseSection';
 import SettlementSection from './SettlementSection';
@@ -8,36 +9,20 @@ export default function TripDashboard({ trip, onClearTrip }) {
   const [members, setMembers] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [settlement, setSettlement] = useState(null);
-  const [loading, setLoading] = useState(true);
 
-  const loadData = async () => {
-    try {
-      const [membersData, expensesData, settlementData] = await Promise.all([
-        listMembers(trip.id),
-        listExpenses(trip.id),
-        getSettlement(trip.id),
-      ]);
-      setMembers(membersData);
-      setExpenses(expensesData);
-      setSettlement(settlementData);
-    } catch (err) {
-      console.error('Failed to load data:', err);
-    } finally {
-      setLoading(false);
-    }
+  const loadData = () => {
+    const membersData = storage.getMembers();
+    const expensesData = storage.getExpenses();
+    const settlementData = getSettlement(expensesData);
+    
+    setMembers(membersData);
+    setExpenses(expensesData);
+    setSettlement(settlementData);
   };
 
   useEffect(() => {
     loadData();
-  }, [trip.id]);
-
-  if (loading) {
-    return (
-      <div className="app-container">
-        <div className="loading">Loading trip data...</div>
-      </div>
-    );
-  }
+  }, []);
 
   return (
     <div className="app-container">
@@ -64,18 +49,16 @@ export default function TripDashboard({ trip, onClearTrip }) {
           borderLeft: '3px solid var(--marigold)',
           fontSize: '0.875rem'
         }}>
-          <strong>Note:</strong> Data is NOT saved on server. Download PDF to keep a record.
+          <strong>Note:</strong> Data saved locally in browser. Download PDF to keep a permanent record.
         </div>
       </div>
 
       <MemberSection 
-        tripId={trip.id} 
         members={members} 
         onMembersChange={loadData} 
       />
 
       <ExpenseSection
-        tripId={trip.id}
         members={members}
         expenses={expenses}
         onExpensesChange={loadData}
@@ -83,8 +66,8 @@ export default function TripDashboard({ trip, onClearTrip }) {
 
       {expenses.length > 0 && (
         <SettlementSection
-          tripId={trip.id}
           settlement={settlement}
+          members={members}
         />
       )}
     </div>

@@ -1,25 +1,21 @@
 import { useState } from 'react';
-import { createTrip } from '../api';
+import * as storage from '../services/storage';
 
 export default function TripLanding({ onTripCreated }) {
   const [tripName, setTripName] = useState('');
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     if (!tripName.trim()) return;
 
-    setLoading(true);
     setError(null);
 
     try {
-      const trip = await createTrip(tripName.trim());
+      const trip = storage.createTrip(tripName.trim());
       onTripCreated(trip);
     } catch (err) {
       setError(err.message);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -44,7 +40,6 @@ export default function TripLanding({ onTripCreated }) {
               onChange={(e) => setTripName(e.target.value)}
               placeholder="e.g., Goa Trip 2024"
               autoFocus
-              disabled={loading}
             />
           </div>
 
@@ -55,8 +50,8 @@ export default function TripLanding({ onTripCreated }) {
           )}
 
           <div className="form-actions">
-            <button type="submit" className="primary" disabled={loading || !tripName.trim()}>
-              {loading ? 'Creating...' : 'Start Trip'}
+            <button type="submit" className="primary" disabled={!tripName.trim()}>
+              Start Trip
             </button>
           </div>
         </form>

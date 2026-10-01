@@ -1,37 +1,33 @@
 import { useState } from 'react';
-import { addMember, deleteMember } from '../api';
+import * as storage from '../services/storage';
 import { getInitials, getColorForMember } from '../utils';
 
-export default function MemberSection({ tripId, members, onMembersChange }) {
+export default function MemberSection({ members, onMembersChange }) {
   const [showForm, setShowForm] = useState(false);
   const [memberName, setMemberName] = useState('');
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleAddMember = async (e) => {
+  const handleAddMember = (e) => {
     e.preventDefault();
     if (!memberName.trim()) return;
 
-    setLoading(true);
     setError(null);
 
     try {
-      await addMember(tripId, memberName.trim());
+      storage.addMember(memberName.trim());
       setMemberName('');
       setShowForm(false);
       onMembersChange();
     } catch (err) {
       setError(err.message);
-    } finally {
-      setLoading(false);
     }
   };
 
-  const handleDeleteMember = async (memberId) => {
+  const handleDeleteMember = (memberId) => {
     if (!confirm('Remove this member?')) return;
 
     try {
-      await deleteMember(tripId, memberId);
+      storage.deleteMember(memberId);
       onMembersChange();
     } catch (err) {
       alert(err.message);
@@ -76,7 +72,6 @@ export default function MemberSection({ tripId, members, onMembersChange }) {
                 onChange={(e) => setMemberName(e.target.value)}
                 placeholder="Enter name"
                 autoFocus
-                disabled={loading}
               />
             </div>
 
@@ -87,10 +82,10 @@ export default function MemberSection({ tripId, members, onMembersChange }) {
             )}
 
             <div className="form-actions">
-              <button type="submit" className="primary" disabled={loading || !memberName.trim()}>
-                {loading ? 'Adding...' : 'Add Member'}
+              <button type="submit" className="primary" disabled={!memberName.trim()}>
+                Add Member
               </button>
-              <button type="button" onClick={() => setShowForm(false)} disabled={loading}>
+              <button type="button" onClick={() => setShowForm(false)}>
                 Cancel
               </button>
             </div>

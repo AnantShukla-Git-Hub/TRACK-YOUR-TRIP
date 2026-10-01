@@ -1,10 +1,58 @@
 import { formatCurrency } from '../utils';
-import { getSheetPdfUrl } from '../api';
+import * as storage from '../services/storage';
 
-export default function SettlementSection({ tripId, settlement }) {
+export default function SettlementSection({ settlement, members }) {
   if (!settlement) return null;
 
-  const { grand_total_paise, balances, transactions } = settlement;
+  const { balances, transactions, totalExpenses } = settlement;
+  
+  const getMemberName = (memberId) => {
+    return members.find(m => m.id === memberId)?.name || 'Unknown';
+  };
+
+  const handleDownloadPDF = async () => {
+    try {
+      const tripData = storage.getAllData();
+      
+      const pdfData = {
+        tripName: tripData.trip.name,
+        members: tripData.members,
+        expenses: tripData.expenses,
+        balances: Object.entries(balances).map(([memberId, amount]) => ({
+          memberId: parseInt(memberId),
+          amount
+        })),
+        transactions: transactions.map(t => ({
+          fromId: t.from,
+          toId: t.to,
+          amount: t.amount
+        })),
+        totalExpenses
+      };
+
+      const response = await fetch('/api/generate-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(pdfData)
+      });
+
+      if (!response.ok) throw new Error('PDF generation failed');
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${tripData.trip.name.replace(/\s+/g, '_')}_settlement.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      alert('Failed to generate PDF: ' + error.message);
+    }
+  };
 
   return (
     <div className="settlement-section perforation">
@@ -28,7 +76,7 @@ export default function SettlementSection({ tripId, settlement }) {
           </p>
         </div>
         <div className="mono" style={{ fontSize: '2rem', fontWeight: '600', color: 'var(--marigold)' }}>
-          {formatCurrency(grand_total_paise)}
+          {formatCurrency(totalExpenses)}
         </div>
       </div>
 
@@ -36,21 +84,21 @@ export default function SettlementSection({ tripId, settlement }) {
       <div style={{ marginBottom: 'var(--space-xl)' }}>
         <h3>Net Balances</h3>
         <div style={{ marginTop: 'var(--space-md)' }}>
-          {balances.map(balance => {
-            const isPositive = balance.net_balance_paise > 0;
-            const isZero = balance.net_balance_paise === 0;
+          {Object.entries(balances).map(([memberId, balance]) => {
+            const isPositive = balance > 0;
+            const isZero = balance === 0;
             
             return (
               <div
-                key={balance.member_id}
+                key={memberId}
                 className={`balance-card ${isPositive ? 'positive' : isZero ? '' : 'negative'}`}
               >
-                <span className="balance-name">{balance.member_name}</span>
+                <span className="balance-name">{getMemberName(parseInt(memberId))}</span>
                 <span className={`balance-amount mono ${isPositive ? 'text-green' : isZero ? '' : 'text-red'}`}>
                   {isZero ? 'Settled' : (
                     <>
                       {isPositive ? 'Gets back' : 'Owes'}{' '}
-                      {formatCurrency(Math.abs(balance.net_balance_paise))}
+                      {formatCurrency(Math.abs(balance))}
                     </>
                   )}
                 </span>
@@ -70,12 +118,12 @@ export default function SettlementSection({ tripId, settlement }) {
               <div key={index} className="ticket-stub">
                 <div className="ticket-stub-content">
                   <div className="ticket-stub-flow">
-                    <strong>{txn.debtor_name}</strong>
+                    <strong>{getMemberName(txn.from)}</strong>
                     <span className="ticket-stub-arrow">→</span>
-                    <strong>{txn.creditor_name}</strong>
+                    <strong>{getMemberName(txn.to)}</strong>
                   </div>
                   <div className="ticket-stub-amount mono">
-                    {formatCurrency(txn.amount_paise)}
+                    {formatCurrency(txn.amount)}
                   </div>
                 </div>
               </div>
@@ -88,18 +136,10 @@ export default function SettlementSection({ tripId, settlement }) {
         )}
       </div>
 
-      {/* PDF Export */}
       <div style={{ textAlign: 'center' }}>
-        <a
-          href={getSheetPdfUrl(tripId)}
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ textDecoration: 'none' }}
-        >
-          <button className="primary">
-            Download PDF Report
-          </button>
-        </a>
+        <button className="primary" onClick={handleDownloadPDF}>
+          Download PDF Report
+        </button>
       </div>
     </div>
   );

@@ -1,19 +1,18 @@
 import { useState } from 'react';
-import { addExpense } from '../api';
+import * as storage from '../services/storage';
 import { formatCurrency, rupeesToPaise } from '../utils';
 
-export default function ExpenseSection({ tripId, members, expenses, onExpensesChange }) {
+export default function ExpenseSection({ members, expenses, onExpensesChange }) {
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
-    payers: {}, // { memberId: amount }
+    payers: {},
     splitAmong: [],
   });
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     
     const payerIds = Object.keys(formData.payers).filter(id => formData.payers[id]);
@@ -24,35 +23,24 @@ export default function ExpenseSection({ tripId, members, expenses, onExpensesCh
     }
 
     const totalPaise = rupeesToPaise(formData.amount);
-    
-    // Calculate total paid by all payers
-    const totalPaid = payerIds.reduce((sum, id) => {
-      return sum + rupeesToPaise(formData.payers[id]);
-    }, 0);
+    const totalPaid = payerIds.reduce((sum, id) => sum + rupeesToPaise(formData.payers[id]), 0);
 
     if (totalPaid !== totalPaise) {
-      setError(`Total paid (₹${(totalPaid / 100).toFixed(2)}) must equal expense amount (₹${formData.amount})`);
+      setError(`Total paid (Rs ${(totalPaid / 100).toFixed(2)}) must equal expense amount (Rs ${formData.amount})`);
       return;
     }
     
-    const expenseData = {
-      description: formData.description.trim(),
-      total_amount_paise: totalPaise,
-      payers: payerIds.map(memberId => ({
-        member_id: parseInt(memberId),
-        amount_paid_paise: rupeesToPaise(formData.payers[memberId]),
-      })),
-      participants: formData.splitAmong.map(memberId => ({
-        member_id: parseInt(memberId),
-        share_amount_paise: null, // Equal split
-      })),
-    };
-
-    setLoading(true);
-    setError(null);
-
     try {
-      await addExpense(tripId, expenseData);
+      storage.addExpense(
+        formData.description.trim(),
+        totalPaise,
+        payerIds.map(memberId => ({
+          memberId: parseInt(memberId),
+          amount: rupeesToPaise(formData.payers[memberId])
+        })),
+        formData.splitAmong.map(id => parseInt(id))
+      );
+      
       setFormData({
         description: '',
         amount: '',
@@ -60,11 +48,10 @@ export default function ExpenseSection({ tripId, members, expenses, onExpensesCh
         splitAmong: [],
       });
       setShowForm(false);
+      setError(null);
       onExpensesChange();
     } catch (err) {
       setError(err.message);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -124,7 +111,7 @@ export default function ExpenseSection({ tripId, members, expenses, onExpensesCh
 
   const getPayersText = (payers) => {
     if (payers.length === 1) {
-      return `Paid by ${getMemberName(payers[0].member_id)}`;
+      return `Paid by ${getMemberName(payers[0].memberId)}`;
     }
     return `Paid by ${payers.length} members`;
   };
@@ -187,7 +174,7 @@ export default function ExpenseSection({ tripId, members, expenses, onExpensesCh
                   <button 
                     type="button" 
                     onClick={selectAllPayers}
-                    disabled={loading || !formData.amount}
+                    disabled={!formData.amount}
                     style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
                   >
                     All
@@ -195,7 +182,6 @@ export default function ExpenseSection({ tripId, members, expenses, onExpensesCh
                   <button 
                     type="button" 
                     onClick={clearAllPayers}
-                    disabled={loading}
                     style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
                   >
                     Clear
@@ -210,7 +196,6 @@ export default function ExpenseSection({ tripId, members, expenses, onExpensesCh
                         type="checkbox"
                         checked={!!formData.payers[member.id]}
                         onChange={() => togglePayer(member.id)}
-                        disabled={loading}
                       />
                       <span>{member.name}</span>
                     </label>
@@ -222,7 +207,6 @@ export default function ExpenseSection({ tripId, members, expenses, onExpensesCh
                         value={formData.payers[member.id]}
                         onChange={(e) => updatePayerAmount(member.id, e.target.value)}
                         placeholder="Amount"
-                        disabled={loading}
                         style={{ width: '120px' }}
                       />
                     )}
@@ -255,7 +239,6 @@ export default function ExpenseSection({ tripId, members, expenses, onExpensesCh
                   <button 
                     type="button" 
                     onClick={selectAllParticipants}
-                    disabled={loading}
                     style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
                   >
                     All
@@ -263,7 +246,6 @@ export default function ExpenseSection({ tripId, members, expenses, onExpensesCh
                   <button 
                     type="button" 
                     onClick={clearAllParticipants}
-                    disabled={loading}
                     style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
                   >
                     Clear
@@ -285,7 +267,6 @@ export default function ExpenseSection({ tripId, members, expenses, onExpensesCh
                       type="checkbox"
                       checked={formData.splitAmong.includes(member.id)}
                       onChange={() => toggleSplitMember(member.id)}
-                      disabled={loading}
                     />
                     <span>{member.name}</span>
                   </label>
@@ -300,10 +281,10 @@ export default function ExpenseSection({ tripId, members, expenses, onExpensesCh
             )}
 
             <div className="form-actions">
-              <button type="submit" className="primary" disabled={loading}>
-                {loading ? 'Adding...' : 'Add Expense'}
+              <button type="submit" className="primary">
+                Add Expense
               </button>
-              <button type="button" onClick={() => setShowForm(false)} disabled={loading}>
+              <button type="button" onClick={() => setShowForm(false)}>
                 Cancel
               </button>
             </div>
@@ -324,7 +305,7 @@ export default function ExpenseSection({ tripId, members, expenses, onExpensesCh
           }}>
             <strong>Grand Total</strong>
             <strong className="mono" style={{ fontSize: '1.25rem', color: 'var(--marigold)' }}>
-              {formatCurrency(expenses.reduce((sum, e) => sum + e.total_amount_paise, 0))}
+              {formatCurrency(expenses.reduce((sum, e) => sum + e.amount, 0))}
             </strong>
           </div>
           <div className="expense-list">
@@ -337,7 +318,7 @@ export default function ExpenseSection({ tripId, members, expenses, onExpensesCh
                 </div>
               </div>
               <div className="expense-amount mono">
-                {formatCurrency(expense.total_amount_paise)}
+                {formatCurrency(expense.amount)}
               </div>
             </div>
           ))}
