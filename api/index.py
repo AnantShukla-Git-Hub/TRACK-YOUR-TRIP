@@ -3,6 +3,8 @@
 
 from http.server import BaseHTTPRequestHandler
 import json
+import re
+from xml.sax.saxutils import escape
 from io import BytesIO
 from datetime import datetime
 from reportlab.lib import colors
@@ -25,7 +27,9 @@ class handler(BaseHTTPRequestHandler):
             # Send response
             self.send_response(200)
             self.send_header('Content-Type', 'application/pdf')
-            self.send_header('Content-Disposition', f'attachment; filename="{data["tripName"]}_settlement.pdf"')
+            # Safe ASCII filename (special chars / Hindi in trip name would crash headers)
+            safe_name = re.sub(r'[^A-Za-z0-9_-]+', '_', str(data.get('tripName', 'trip'))).strip('_') or 'trip'
+            self.send_header('Content-Disposition', f'attachment; filename="{safe_name}_settlement.pdf"')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.end_headers()
             
@@ -76,7 +80,7 @@ class handler(BaseHTTPRequestHandler):
         story = []
         
         # Add title
-        title = Paragraph(f"<b>{data['tripName']} - Settlement Report</b>", styles['Title'])
+        title = Paragraph(f"<b>{escape(str(data['tripName']))} - Settlement Report</b>", styles['Title'])
         story.append(title)
         
         # Add date
