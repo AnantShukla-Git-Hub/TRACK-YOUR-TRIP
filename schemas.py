@@ -1,14 +1,10 @@
-"""
-Pydantic request/response models for the trip expense splitter API.
-"""
-
 from datetime import datetime
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
 
-# ---- Trip ----
+
 
 class TripCreate(BaseModel):
     name: str = Field(min_length=1)
@@ -23,7 +19,7 @@ class TripOut(BaseModel):
         from_attributes = True
 
 
-# ---- Member ----
+
 
 class MemberCreate(BaseModel):
     name: str = Field(min_length=1)
@@ -37,7 +33,7 @@ class MemberOut(BaseModel):
         from_attributes = True
 
 
-# ---- Expense ----
+
 
 class ExpensePayerIn(BaseModel):
     member_id: int
@@ -83,7 +79,7 @@ class ExpenseOut(BaseModel):
         from_attributes = True
 
 
-# ---- Settlement ----
+
 
 class MemberBalance(BaseModel):
     member_id: int
@@ -105,7 +101,7 @@ class SettlementOut(BaseModel):
     transactions: List[SettlementTransaction]
 
 
-# ---- Sheet export ----
+
 
 class ExpenseShareLine(BaseModel):
     member_id: int

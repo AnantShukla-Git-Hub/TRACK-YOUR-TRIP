@@ -1,9 +1,3 @@
-"""
-Pure calculation logic for the trip expense splitter.
-No DB or FastAPI dependencies here — this module is independently testable.
-All money amounts are integers in paise (never floats).
-"""
-
 import heapq
 
 

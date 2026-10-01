@@ -1,6 +1,5 @@
-// API utility functions
-
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_BASE || 
+  (import.meta.env.DEV ? 'http://localhost:8000' : '/api');
 
 async function fetchAPI(endpoint, options = {}) {
   const response = await fetch(`${API_BASE}${endpoint}`, {
@@ -19,7 +18,7 @@ async function fetchAPI(endpoint, options = {}) {
   return response.json();
 }
 
-// Trip APIs
+
 export const createTrip = (name) => 
   fetchAPI('/trips', {
     method: 'POST',
@@ -29,7 +28,7 @@ export const createTrip = (name) =>
 export const getTrip = (tripId) => 
   fetchAPI(`/trips/${tripId}`);
 
-// Member APIs
+
 export const addMember = (tripId, name) =>
   fetchAPI(`/trips/${tripId}/members`, {
     method: 'POST',
@@ -44,7 +43,7 @@ export const deleteMember = (tripId, memberId) =>
     method: 'DELETE',
   });
 
-// Expense APIs
+
 export const addExpense = (tripId, expenseData) =>
   fetchAPI(`/trips/${tripId}/expenses`, {
     method: 'POST',
@@ -54,11 +53,11 @@ export const addExpense = (tripId, expenseData) =>
 export const listExpenses = (tripId) =>
   fetchAPI(`/trips/${tripId}/expenses`);
 
-// Settlement API
+
 export const getSettlement = (tripId) =>
   fetchAPI(`/trips/${tripId}/settlement`);
 
-// Sheet APIs
+
 export const getSheet = (tripId) =>
   fetchAPI(`/trips/${tripId}/sheet`);
 

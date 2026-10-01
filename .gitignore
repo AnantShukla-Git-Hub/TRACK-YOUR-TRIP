@@ -11,10 +11,8 @@ ENV/
 dist/
 build/
 
-# Database
-*.db
-*.sqlite
-*.sqlite3
+# Storage (data persists in /tmp on Vercel)
+trip_data.json
 
 # IDE
 .vscode/
@@ -54,3 +52,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+
+# Vercel
+.vercel

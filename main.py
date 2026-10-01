@@ -1,37 +1,29 @@
-"""
-FastAPI application for the trip expense splitter.
-"""
 from io import BytesIO
 from zoneinfo import ZoneInfo
+from datetime import datetime, timezone
+
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-
-from datetime import datetime, timezone
-
-from fastapi import Depends, FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.orm import Session
-
-from database import Base, engine, get_db
-from models import Expense, ExpenseParticipant, ExpensePayer, Member, Trip
+import storage
 import schemas
 import settlement
 
-Base.metadata.create_all(bind=engine)
-
 app = FastAPI(title="Trip Expense Splitter")
 
-# CORS middleware for frontend
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173", 
         "http://localhost:3000",
-        "https://anantshukla-git-hub.github.io",  # GitHub Pages
+        "http://localhost:4173",
+        "https://*.vercel.app",
+        "https://track-your-trip.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -39,88 +31,67 @@ app.add_middleware(
 )
 
 
-def get_trip_or_404(trip_id: int, db: Session) -> Trip:
-    trip = db.get(Trip, trip_id)
+def get_trip_or_404(trip_id: int) -> dict:
+    trip = storage.get_trip(trip_id)
     if trip is None:
         raise HTTPException(status_code=404, detail="Trip not found")
     return trip
 
 
-def get_member_ids_for_trip(trip_id: int, db: Session) -> set[int]:
-    rows = db.query(Member.id).filter(Member.trip_id == trip_id).all()
-    return {row[0] for row in rows}
-
-
-# ---- Trip ----
+def get_member_ids_for_trip(trip_id: int) -> set[int]:
+    members = storage.get_members_by_trip(trip_id)
+    return {m["id"] for m in members}
 
 @app.post("/trips", response_model=schemas.TripOut)
-def create_trip(payload: schemas.TripCreate, db: Session = Depends(get_db)):
-    trip = Trip(name=payload.name)
-    db.add(trip)
-    db.commit()
-    db.refresh(trip)
+def create_trip(payload: schemas.TripCreate):
+    trip = storage.create_trip(name=payload.name)
     return trip
 
 
 @app.get("/trips/{trip_id}", response_model=schemas.TripOut)
-def get_trip(trip_id: int, db: Session = Depends(get_db)):
-    return get_trip_or_404(trip_id, db)
+def get_trip(trip_id: int):
+    return get_trip_or_404(trip_id)
 
 
-# ---- Members ----
+
 
 @app.post("/trips/{trip_id}/members", response_model=schemas.MemberOut)
-def add_member(trip_id: int, payload: schemas.MemberCreate, db: Session = Depends(get_db)):
-    get_trip_or_404(trip_id, db)
-    member = Member(trip_id=trip_id, name=payload.name)
-    db.add(member)
-    db.commit()
-    db.refresh(member)
+def add_member(trip_id: int, payload: schemas.MemberCreate):
+    get_trip_or_404(trip_id)
+    member = storage.create_member(trip_id=trip_id, name=payload.name)
     return member
 
 
 @app.get("/trips/{trip_id}/members", response_model=list[schemas.MemberOut])
-def list_members(trip_id: int, db: Session = Depends(get_db)):
-    get_trip_or_404(trip_id, db)
-    return db.query(Member).filter(Member.trip_id == trip_id).all()
-
-
-def is_member_used(member_id: int, db: Session) -> bool:
-    payer_exists = db.query(ExpensePayer).filter(ExpensePayer.member_id == member_id).first()
-    participant_exists = (
-        db.query(ExpenseParticipant).filter(ExpenseParticipant.member_id == member_id).first()
-    )
-    return payer_exists is not None or participant_exists is not None
+def list_members(trip_id: int):
+    get_trip_or_404(trip_id)
+    return storage.get_members_by_trip(trip_id)
 
 
 @app.delete("/trips/{trip_id}/members/{member_id}", status_code=204)
-def delete_member(trip_id: int, member_id: int, db: Session = Depends(get_db)):
-    get_trip_or_404(trip_id, db)
-    member = (
-        db.query(Member)
-        .filter(Member.trip_id == trip_id, Member.id == member_id)
-        .first()
-    )
-    if member is None:
+def delete_member(trip_id: int, member_id: int):
+    get_trip_or_404(trip_id)
+    member = storage.get_member(member_id)
+    
+    if member is None or member["trip_id"] != trip_id:
         raise HTTPException(status_code=404, detail="Member not found")
 
-    if is_member_used(member_id, db):
+    if storage.is_member_used_in_expenses(member_id):
         raise HTTPException(
             status_code=400,
             detail="This member is already part of an expense; cannot delete without affecting past records.",
         )
 
-    db.delete(member)
-    db.commit()
+    storage.delete_member(member_id)
     return None
 
 
-# ---- Expenses ----
+
 
 @app.post("/trips/{trip_id}/expenses", response_model=schemas.ExpenseOut)
-def add_expense(trip_id: int, payload: schemas.ExpenseCreate, db: Session = Depends(get_db)):
-    get_trip_or_404(trip_id, db)
-    valid_member_ids = get_member_ids_for_trip(trip_id, db)
+def add_expense(trip_id: int, payload: schemas.ExpenseCreate):
+    get_trip_or_404(trip_id)
+    valid_member_ids = get_member_ids_for_trip(trip_id)
 
     payer_ids = {p.member_id for p in payload.payers}
     participant_ids = {p.member_id for p in payload.participants}
@@ -147,60 +118,58 @@ def add_expense(trip_id: int, payload: schemas.ExpenseCreate, db: Session = Depe
     except (settlement.PayerValidationError, settlement.ShareValidationError) as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-    expense = Expense(
+    expense = storage.create_expense(
         trip_id=trip_id,
         description=payload.description,
         total_amount_paise=payload.total_amount_paise,
+        payers=[
+            {"member_id": p.member_id, "amount_paid_paise": p.amount_paid_paise}
+            for p in payload.payers
+        ],
+        participants=[
+            {"member_id": p.member_id, "share_amount_paise": p.share_amount_paise}
+            for p in payload.participants
+        ],
     )
-    expense.payers = [
-        ExpensePayer(member_id=p.member_id, amount_paid_paise=p.amount_paid_paise)
-        for p in payload.payers
-    ]
-    expense.participants = [
-        ExpenseParticipant(member_id=p.member_id, share_amount_paise=p.share_amount_paise)
-        for p in payload.participants
-    ]
 
-    db.add(expense)
-    db.commit()
-    db.refresh(expense)
     return expense
 
 
 @app.get("/trips/{trip_id}/expenses", response_model=list[schemas.ExpenseOut])
-def list_expenses(trip_id: int, db: Session = Depends(get_db)):
-    get_trip_or_404(trip_id, db)
-    return db.query(Expense).filter(Expense.trip_id == trip_id).all()
+def list_expenses(trip_id: int):
+    get_trip_or_404(trip_id)
+    return storage.get_expenses_by_trip(trip_id)
 
 
 # ---- Settlement ----
 
-def _build_expense_dicts(trip_id: int, db: Session) -> list[dict]:
-    expenses = db.query(Expense).filter(Expense.trip_id == trip_id).all()
+def _build_expense_dicts(trip_id: int) -> list[dict]:
+    """Build expense dictionaries for settlement calculation."""
+    expenses = storage.get_expenses_by_trip(trip_id)
     result = []
     for expense in expenses:
         result.append(
             {
-                "total_amount_paise": expense.total_amount_paise,
+                "total_amount_paise": expense["total_amount_paise"],
                 "payers": [
-                    {"member_id": p.member_id, "amount_paid_paise": p.amount_paid_paise}
-                    for p in expense.payers
+                    {"member_id": p["member_id"], "amount_paid_paise": p["amount_paid_paise"]}
+                    for p in expense["payers"]
                 ],
                 "participants": [
-                    {"member_id": p.member_id, "share_amount_paise": p.share_amount_paise}
-                    for p in expense.participants
+                    {"member_id": p["member_id"], "share_amount_paise": p["share_amount_paise"]}
+                    for p in expense["participants"]
                 ],
             }
         )
     return result
 
 
-def _compute_settlement(trip_id: int, db: Session):
-    expense_dicts = _build_expense_dicts(trip_id, db)
+def _compute_settlement(trip_id: int):
+    expense_dicts = _build_expense_dicts(trip_id)
     net_balances = settlement.compute_net_balances(expense_dicts)
     transactions = settlement.minimize_transactions(net_balances)
 
-    members = {m.id: m.name for m in db.query(Member).filter(Member.trip_id == trip_id).all()}
+    members = {m["id"]: m["name"] for m in storage.get_members_by_trip(trip_id)}
 
     balances = [
         schemas.MemberBalance(
@@ -226,13 +195,13 @@ def _compute_settlement(trip_id: int, db: Session):
 
 
 @app.get("/trips/{trip_id}/settlement", response_model=schemas.SettlementOut)
-def get_settlement(trip_id: int, db: Session = Depends(get_db)):
-    get_trip_or_404(trip_id, db)
-    balances, transactions = _compute_settlement(trip_id, db)
+def get_settlement(trip_id: int):
+    get_trip_or_404(trip_id)
+    balances, transactions = _compute_settlement(trip_id)
     
     # Calculate grand total
-    expenses = db.query(Expense).filter(Expense.trip_id == trip_id).all()
-    grand_total = sum(e.total_amount_paise for e in expenses)
+    expenses = storage.get_expenses_by_trip(trip_id)
+    grand_total = sum(e["total_amount_paise"] for e in expenses)
     
     return schemas.SettlementOut(
         grand_total_paise=grand_total,
@@ -241,33 +210,31 @@ def get_settlement(trip_id: int, db: Session = Depends(get_db)):
     )
 
 
-# ---- Sheet export ----
-
-def _build_trip_sheet(trip_id: int, db: Session) -> schemas.TripSheet:
-    trip = get_trip_or_404(trip_id, db)
-    members = {m.id: m.name for m in db.query(Member).filter(Member.trip_id == trip_id).all()}
-    expenses = db.query(Expense).filter(Expense.trip_id == trip_id).all()
+def _build_trip_sheet(trip_id: int) -> schemas.TripSheet:
+    trip = get_trip_or_404(trip_id)
+    members = {m["id"]: m["name"] for m in storage.get_members_by_trip(trip_id)}
+    expenses = storage.get_expenses_by_trip(trip_id)
 
     expense_lines = []
     for expense in expenses:
         participants_data = [
-            {"member_id": p.member_id, "share_amount_paise": p.share_amount_paise}
-            for p in expense.participants
+            {"member_id": p["member_id"], "share_amount_paise": p["share_amount_paise"]}
+            for p in expense["participants"]
         ]
-        shares = settlement.compute_expense_shares(expense.total_amount_paise, participants_data)
+        shares = settlement.compute_expense_shares(expense["total_amount_paise"], participants_data)
 
         expense_lines.append(
             schemas.ExpenseSheetLine(
-                expense_id=expense.id,
-                description=expense.description,
-                total_amount_paise=expense.total_amount_paise,
+                expense_id=expense["id"],
+                description=expense["description"],
+                total_amount_paise=expense["total_amount_paise"],
                 payers=[
                     schemas.ExpensePayerLine(
-                        member_id=p.member_id,
-                        member_name=members.get(p.member_id, "Unknown"),
-                        amount_paid_paise=p.amount_paid_paise,
+                        member_id=p["member_id"],
+                        member_name=members.get(p["member_id"], "Unknown"),
+                        amount_paid_paise=p["amount_paid_paise"],
                     )
-                    for p in expense.payers
+                    for p in expense["payers"]
                 ],
                 shares=[
                     schemas.ExpenseShareLine(
@@ -280,11 +247,11 @@ def _build_trip_sheet(trip_id: int, db: Session) -> schemas.TripSheet:
             )
         )
 
-    balances, transactions = _compute_settlement(trip_id, db)
+    balances, transactions = _compute_settlement(trip_id)
 
     return schemas.TripSheet(
-        trip_id=trip.id,
-        trip_name=trip.name,
+        trip_id=trip["id"],
+        trip_name=trip["name"],
         generated_at=datetime.now(timezone.utc),
         expenses=expense_lines,
         balances=balances,
@@ -293,8 +260,8 @@ def _build_trip_sheet(trip_id: int, db: Session) -> schemas.TripSheet:
 
 
 @app.get("/trips/{trip_id}/sheet", response_model=schemas.TripSheet)
-def get_sheet(trip_id: int, db: Session = Depends(get_db)):
-    return _build_trip_sheet(trip_id, db)
+def get_sheet(trip_id: int):
+    return _build_trip_sheet(trip_id)
 
 
 def _table_style() -> TableStyle:
@@ -451,8 +418,8 @@ def _render_sheet_pdf(sheet: schemas.TripSheet) -> BytesIO:
 
 
 @app.get("/trips/{trip_id}/sheet/pdf")
-def get_sheet_pdf(trip_id: int, db: Session = Depends(get_db)):
-    sheet = _build_trip_sheet(trip_id, db)
+def get_sheet_pdf(trip_id: int):
+    sheet = _build_trip_sheet(trip_id)
     pdf_buffer = _render_sheet_pdf(sheet)
 
     safe_name = sheet.trip_name.replace(" ", "_")
