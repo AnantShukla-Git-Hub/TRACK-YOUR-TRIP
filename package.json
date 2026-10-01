@@ -1,0 +1,13 @@
+{
+  "name": "track-your-trip",
+  "version": "1.0.0",
+  "description": "Trip expense splitter with settlement optimization",
+  "main": "index.html",
+  "scripts": {
+    "build": "echo 'Static site - no build needed'",
+    "start": "echo 'Static site'"
+  },
+  "keywords": ["expense", "trip", "settlement", "greedy-algorithm"],
+  "author": "Anant",
+  "license": "MIT"
+}
