@@ -1,9 +1,8 @@
-# Minimal FastAPI backend for PDF generation only
-# This file handles one job: convert trip data to PDF report
+# Simple Vercel serverless function for PDF generation
+# This file works directly with Vercel's Python runtime
 
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from http.server import BaseHTTPRequestHandler
+import json
 from io import BytesIO
 from datetime import datetime
 from reportlab.lib import colors
@@ -11,41 +10,79 @@ from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle
 from reportlab.lib.styles import getSampleStyleSheet
 
-# Create FastAPI app
-app = FastAPI()
-
-# Allow all origins for CORS (Cross-Origin Resource Sharing)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # Allow all websites to call this API
-    allow_methods=["*"],  # Allow all HTTP methods (GET, POST, etc.)
-    allow_headers=["*"],  # Allow all headers
-)
-
-@app.post("/api/generate-pdf")
-async def generate_pdf(data: dict):
-    """
-    Main function that receives trip data and returns PDF file
-    Input: JSON with trip name, members, expenses, balances, transactions
-    Output: PDF file for download
-    """
-    try:
-        # Create PDF in memory (not saved to disk)
+class handler(BaseHTTPRequestHandler):
+    def do_POST(self):
+        """Handle POST request to generate PDF"""
+        try:
+            # Read the request body
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            data = json.loads(post_data.decode('utf-8'))
+            
+            # Generate PDF
+            pdf_buffer = self.generate_pdf(data)
+            
+            # Send response
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/pdf')
+            self.send_header('Content-Disposition', f'attachment; filename="{data["tripName"]}_settlement.pdf"')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            # Send PDF content
+            self.wfile.write(pdf_buffer.getvalue())
+            
+        except Exception as e:
+            # Send error response
+            self.send_response(500)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            error_response = json.dumps({"error": str(e)})
+            self.wfile.write(error_response.encode('utf-8'))
+    
+    def do_OPTIONS(self):
+        """Handle CORS preflight requests"""
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        self.end_headers()
+    
+    def do_GET(self):
+        """Handle GET request for health check"""
+        if self.path == '/api/health':
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.end_headers()
+            
+            response = json.dumps({
+                "status": "API is working!", 
+                "timestamp": datetime.now().isoformat()
+            })
+            self.wfile.write(response.encode('utf-8'))
+        else:
+            self.send_response(404)
+            self.end_headers()
+    
+    def generate_pdf(self, data):
+        """Generate PDF from trip data"""
         buffer = BytesIO()
         
-        # Set up PDF document with A4 page size
+        # Set up PDF document
         doc = SimpleDocTemplate(buffer, pagesize=A4)
-        styles = getSampleStyleSheet()  # Get default text styles
-        story = []  # List to store all PDF content
+        styles = getSampleStyleSheet()
+        story = []
         
-        # Add trip title
+        # Add title
         title = Paragraph(f"<b>{data['tripName']} - Settlement Report</b>", styles['Title'])
         story.append(title)
         
-        # Add generation date
+        # Add date
         date_text = f"Generated on: {datetime.now().strftime('%d %B %Y at %I:%M %p')}"
         story.append(Paragraph(date_text, styles['Normal']))
-        story.append(Paragraph("<br/><br/>", styles['Normal']))  # Add some space
+        story.append(Paragraph("<br/><br/>", styles['Normal']))
         
         # Create summary table
         total_amount = data.get('totalExpenses', 0)
@@ -61,27 +98,25 @@ async def generate_pdf(data: dict):
         
         summary_table = Table(summary_data)
         summary_table.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),    # Header background
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke), # Header text color
-            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),             # Left align all text
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'), # Bold header
-            ('FONTSIZE', (0, 0), (-1, -1), 12),              # Font size
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),          # Header padding
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),  # Data rows background
+            ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, -1), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
         ]))
         story.append(summary_table)
         story.append(Paragraph("<br/><br/>", styles['Normal']))
         
-        # Add settlement transactions if any exist
+        # Add transactions
         transactions = data.get('transactions', [])
         if transactions:
             story.append(Paragraph("<b>Who Pays Whom:</b>", styles['Heading2']))
             
-            # Create member ID to name mapping for easy lookup
             member_names = {m['id']: m['name'] for m in data.get('members', [])}
             
-            # Build transactions table
-            txn_data = [['From', 'To', 'Amount']]  # Table header
+            txn_data = [['From', 'To', 'Amount']]
             for txn in transactions:
                 from_name = member_names.get(txn['fromId'], 'Unknown')
                 to_name = member_names.get(txn['toId'], 'Unknown')
@@ -103,28 +138,8 @@ async def generate_pdf(data: dict):
         else:
             story.append(Paragraph("Everyone is already settled! No payments needed.", styles['Normal']))
         
-        # Build the PDF with all content
+        # Build PDF
         doc.build(story)
-        buffer.seek(0)  # Reset buffer pointer to beginning
+        buffer.seek(0)
         
-        # Create safe filename (remove spaces and special characters)
-        safe_filename = data['tripName'].replace(' ', '_').replace('/', '_')
-        
-        # Return PDF as downloadable file
-        return StreamingResponse(
-            buffer,
-            media_type="application/pdf",
-            headers={"Content-Disposition": f"attachment; filename={safe_filename}_settlement.pdf"}
-        )
-        
-    except Exception as e:
-        # If anything goes wrong, return error message
-        raise HTTPException(status_code=500, detail=f"PDF generation failed: {str(e)}")
-
-@app.get("/api/health")
-def health_check():
-    """Simple health check endpoint to test if API is working"""
-    return {"status": "API is working!", "timestamp": datetime.now().isoformat()}
-
-# This makes the app work with Vercel serverless functions
-handler = app
+        return buffer
